@@ -1,0 +1,11 @@
+{{ define "todo" }}
+<li>
+    <span>{{ .Name }} - {{ .Description }}</span>
+    <a hx-get="todos/{{ .Name }}" hx-target="closest li" hx-swap="outerHTML">
+        <button>Edit</button>
+    </a>
+    <a hx-delete="todos/{{ .Name }}" hx-target="closest li" hx-swap="delete">
+        <button>Delete</button>
+    </a>
+</li>
+{{ end }}

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ .Title }}</title>
+    <script src="https://unpkg.com/htmx.org@2.0.3/dist/htmx.js"
+        integrity="sha384-BBDmZzVt6vjz5YbQqZPtFZW82o8QotoM7RUp5xOxV3nSJ8u2pSdtzFAbGKzTlKtg" crossorigin="anonymous">
+        </script>
+</head>
+
+<body>
+    <h1>{{ .Title }}</h1>
+    <h2> New Todo </h2>
+    <form hx-post="/todos" hx-target="ul" hx-swap="beforeend">
+        <label for="title">Title</label>
+        <input type="text" id="name" name="name">
+        <label for="description">Description</label>
+        <input type="text" id="description" name="description">
+        <button type="submit">Save</button>
+    </form>
+    <h2> Todos </h2>
+    <ul> 
+        {{ range .Items }}
+        {{ template "todo" . }}
+        {{ end }}
+    </ul>
+
+</body>
+
+</html>

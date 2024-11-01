@@ -13,10 +13,12 @@ type Todo struct {
 
 var todos = []Todo{
 	{
-		Name:        "Todo1",
+		Name:        "Todo 1",
 		Description: "Description 1",
 	},
 }
+
+var t *template.Template
 
 type TodoPageData struct {
 	Title string
@@ -28,71 +30,84 @@ type EditTodoPageData struct {
 	Item  Todo
 }
 
+func createTodoFromForm(r *http.Request) Todo {
+	return Todo{
+		Name:        r.FormValue("name"),
+		Description: r.FormValue("description"),
+	}
+}
+
+func findTodoByName(name string) Todo {
+	for i := 0; i < len(todos); i++ {
+		if todos[i].Name == name {
+			return todos[i]
+		}
+	}
+	return Todo{}
+}
+
+func deleteTodoByName(name string) {
+	for i := 0; i < len(todos); i++ {
+		if todos[i].Name == name {
+			todos = append(todos[:i], todos[i+1:]...)
+		}
+	}
+}
+
+func addTodo(todo Todo) {
+	todos = append(todos, todo)
+}
+
+func updateTodoByName(name string, todo Todo) {
+	for i := 0; i < len(todos); i++ {
+		if todos[i].Name == name {
+			todos[i] = todo
+		}
+	}
+}
+
 func main() {
-	http.HandleFunc("/todos/", func(w http.ResponseWriter, r *http.Request) {
-		t, _ := template.ParseFiles("todos.html")
+	t, _ = template.ParseFiles("index.html", "todo.html", "form.html")
+
+	http.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
 		page := TodoPageData{
 			Title: "My Todo List",
 			Items: todos,
 		}
-		t.Execute(w, page)
+		t.ExecuteTemplate(w, "index.html", page)
 	})
 
-	http.HandleFunc("/edit/", func(w http.ResponseWriter, r *http.Request) {
-		t, _ := template.ParseFiles("edit.html")
-		name := r.URL.Path[len("/edit/"):]
-		page := EditTodoPageData{
-			Title: name,
-		}
+	http.HandleFunc("POST /todos", func(w http.ResponseWriter, r *http.Request) {
+		todo := createTodoFromForm(r)
 
-		for i := 0; i < len(todos); i++ {
-			if todos[i].Name == name {
-				page.Item.Name = todos[i].Name
-				page.Item.Description = todos[i].Description
-			}
-		}
+		addTodo(todo)
 
-		t.Execute(w, page)
+		t.ExecuteTemplate(w, "todo", todo)
 	})
 
-	http.HandleFunc("/save/", func(w http.ResponseWriter, r *http.Request) {
-		name := r.URL.Path[len("/save/"):]
-		todoName := r.FormValue("name")
-		descriptionName := r.FormValue("description")
+	http.HandleFunc("GET /todos/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
 
-		if name == "" {
-			todos = append(todos, Todo{
-				Name:        todoName,
-				Description: descriptionName,
-			})
-		}
+		todo := findTodoByName(name)
 
-		for i := 0; i < len(todos); i++ {
-			if todos[i].Name == name {
-				todos[i].Name = todoName
-				todos[i].Description = descriptionName
-			}
-		}
-
-		http.Redirect(w, r, "/todos/", http.StatusSeeOther)
+		t.ExecuteTemplate(w, "form", todo)
 	})
 
-	http.HandleFunc("/new/", func(w http.ResponseWriter, r *http.Request) {
-		t, _ := template.ParseFiles("new.html")
-		t.Execute(w, nil)
+	http.HandleFunc("PUT /todos/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
+		todo := createTodoFromForm(r)
+
+		updateTodoByName(name, todo)
+
+		t.ExecuteTemplate(w, "todo", todo)
 	})
 
-	http.HandleFunc("/delete/", func(w http.ResponseWriter, r *http.Request) {
-		name := r.URL.Path[len("/delete/"):]
+	http.HandleFunc("DELETE /todos/{name}", func(w http.ResponseWriter, r *http.Request) {
+		name := r.PathValue("name")
 
-		for i := 0; i < len(todos); i++ {
-			if todos[i].Name == name {
-				todos = append(todos[:i], todos[i+1:]...)
-				break
-			}
-		}
+		deleteTodoByName(name)
 
-		http.Redirect(w, r, "/todos/", http.StatusSeeOther)
+		w.WriteHeader(http.StatusOK)
 	})
 
 	log.Fatal(http.ListenAndServe(":8080", nil))
