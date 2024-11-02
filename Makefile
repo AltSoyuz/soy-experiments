@@ -1,3 +1,14 @@
+PKG_PREFIX := golang-template-htmx-alpine
+BUILDINFO_TAG ?= $(shell echo $$(git describe --long --all | tr '/' '-')$$( \
+	      git diff-index --quiet HEAD -- || echo '-dirty-'$$(git diff-index -u HEAD | openssl sha1 | cut -d' ' -f2 | cut -c 1-8)))
+LATEST_TAG ?= latest
+PKG_TAG ?= $(shell git tag -l --points-at HEAD)
+ifeq ($(PKG_TAG),)
+PKG_TAG := $(BUILDINFO_TAG)
+endif
+
+GO_BUILDINFO = -X '$(PKG_PREFIX)/pkg/buildinfo.Version=todo-server$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
+
 vet:
 	go vet ./...
 
@@ -12,6 +23,9 @@ test-race:
 
 test-full:
 	go test -coverprofile=coverage.txt -covermode=atomic ./...
+
+build:
+	go build -ldflags "$(GO_BUILDINFO)" -o bin/todo-server cmd/todo-server/main.go
 
 update:
 	go get -u ./...

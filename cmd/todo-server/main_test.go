@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"golang-template-htmx-alpine/pkg/httpserver"
 	"io"
 	"net/http"
 	"strings"
@@ -10,7 +11,7 @@ import (
 	"time"
 )
 
-func TestHandlers(t *testing.T) {
+func TestMain(t *testing.T) {
 	// Setup
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -23,7 +24,7 @@ func TestHandlers(t *testing.T) {
 	}()
 
 	// Wait for server
-	if err := waitForReady(ctx, 1*time.Second, baseURL+"/healthz"); err != nil {
+	if err := httpserver.WaitForReady(ctx, 1*time.Second, baseURL+"/healthz"); err != nil {
 		t.Fatalf("server not ready: %v", err)
 	}
 
@@ -111,4 +112,51 @@ func TestHandlers(t *testing.T) {
 		}
 	default:
 	}
+}
+func TestRun(t *testing.T) {
+	t.Run("Server starts and responds to requests", func(t *testing.T) {
+		ctx := context.Background()
+		ctx, cancel := context.WithCancel(ctx)
+		t.Cleanup(cancel)
+
+		baseURL := "http://localhost:8080"
+		errChan := make(chan error, 1)
+		go func() {
+			errChan <- run(ctx)
+		}()
+
+		// Wait for server
+		if err := httpserver.WaitForReady(ctx, 1*time.Second, baseURL+"/healthz"); err != nil {
+			t.Fatalf("server not ready: %v", err)
+		}
+
+		// Make a request to the home page
+		resp, err := http.Get(baseURL + "/")
+		if err != nil {
+			t.Fatalf("failed to make GET request: %v", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Errorf("expected status %d; got %d (%s)", http.StatusOK, resp.StatusCode, resp.Status)
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatalf("failed to read response body: %v", err)
+		}
+
+		if !strings.Contains(string(body), "Todo List") {
+			t.Errorf("response body missing expected string: %q", "Todo List")
+		}
+
+		// Check for server errors
+		select {
+		case err := <-errChan:
+			if err != nil && !errors.Is(err, context.Canceled) {
+				t.Fatalf("server error: %v", err)
+			}
+		default:
+		}
+	})
 }
