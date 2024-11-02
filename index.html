@@ -20,8 +20,8 @@
         <input type="text" id="description" name="description">
         <button type="submit">Save</button>
     </form>
-    <h2> Todos </h2>
-    <ul> 
+    <h2> Todo List </h2>
+    <ul>
         {{ range .Items }}
         {{ template "todo" . }}
         {{ end }}
