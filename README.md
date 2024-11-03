@@ -19,7 +19,9 @@ To install GOKISS, ensure you have Go installed on your system. You can download
 **Http:**
 - [HTTP Services](https://grafana.com/blog/2024/02/09/how-i-write-http-services-in-go-after-13-years/#maker-funcs-return-the-handler)
 
+
 ## Examples
 
 - [Neosync](https://github.com/nucleuscloud/neosync)
 - [Kutt](https://github.com/thedevs-network/kutt)
+- [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics)

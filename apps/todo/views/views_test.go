@@ -1,19 +1,14 @@
-package templates
+package views
 
 import (
 	"bytes"
 	"html/template"
-	"io"
-	"log/slog"
 	"testing"
 )
 
-// Mock logger
-var testLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
-
 // Test for Init function
 func TestInit(t *testing.T) {
-	renderFunc, err := New(testLogger)
+	renderFunc, err := Init()
 	if err != nil {
 		t.Fatalf("Init() returned an error: %v", err)
 	}
@@ -25,8 +20,8 @@ func TestInit(t *testing.T) {
 // Test for initializeTemplates function
 func TestInitializeTemplates(t *testing.T) {
 	// var embeddedFS embed.FS
-	initializeTemplates("pages", "page", testLogger)
-	initializeTemplates("components", "component", testLogger)
+	initializeTemplates("pages", "page")
+	initializeTemplates("components", "component")
 
 	// Assuming templates are present in the "pages" and "components" directories
 	// This test checks if any warnings or info messages are triggered as expected.
@@ -34,12 +29,12 @@ func TestInitializeTemplates(t *testing.T) {
 
 // Test for RenderFunc
 func TestRenderFunc(t *testing.T) {
-	// Mock a parsed template and logger
+	// Mock a parsed template
 	tmpl, err := template.New("test").Parse("Hello, {{.Name}}!")
 	if err != nil {
 		t.Fatalf("Failed to parse template: %v", err)
 	}
-	render := newRender(testLogger, tmpl)
+	render := newRender(tmpl)
 
 	// Create a buffer to capture the rendered output
 	var buf bytes.Buffer

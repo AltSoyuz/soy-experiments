@@ -1,4 +1,4 @@
-package templates
+package views
 
 import (
 	"embed"
@@ -10,40 +10,40 @@ import (
 //go:embed components/* pages/*
 var embedded embed.FS
 
-func New(logger *slog.Logger) (RenderFunc, error) {
+func Init() (RenderFunc, error) {
 	tmpl, err := template.ParseFS(embedded, "pages/*.html", "components/*.html")
 	if err != nil {
 		return nil, err
 	}
 
-	initializeTemplates("pages", "page", logger)
-	initializeTemplates("components", "component", logger)
+	initializeTemplates("pages", "page")
+	initializeTemplates("components", "component")
 
-	render := newRender(logger, tmpl)
+	render := newRender(tmpl)
 
 	return render, nil
 }
 
-func initializeTemplates(dir string, templateType string, logger *slog.Logger) {
+func initializeTemplates(dir string, templateType string) {
 	templates, err := embedded.ReadDir(dir)
 	if err != nil || len(templates) == 0 {
-		logger.Warn("no " + templateType + " templates found")
+		slog.Warn("no " + templateType + " templates found")
 	} else {
 		var templateNames []string
 		for _, file := range templates {
 			templateNames = append(templateNames, file.Name())
 		}
-		logger.Info(templateType+" templates initialized", templateType, templateNames)
+		slog.Info(templateType+" templates initialized", templateType, templateNames)
 	}
 }
 
 type RenderFunc func(w io.Writer, data interface{}, name string)
 
-func newRender(logger *slog.Logger, tmpl *template.Template) RenderFunc {
+func newRender(tmpl *template.Template) RenderFunc {
 	return func(w io.Writer, data interface{}, name string) {
 		err := tmpl.ExecuteTemplate(w, name, data)
 		if err != nil {
-			logger.Error("failed to execute template", "error", err, "template", name)
+			slog.Error("failed to execute template", "error", err, "template", name)
 		}
 	}
 }

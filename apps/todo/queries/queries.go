@@ -4,14 +4,15 @@ import (
 	"context"
 	"database/sql"
 	_ "embed"
+	"golang-template-htmx-alpine/apps/todo/gen/db"
+
 	_ "github.com/mattn/go-sqlite3"
-	"golang-template-htmx-alpine/gen/db"
 )
 
 //go:embed schema.sql
 var ddl string
 
-func New() (*db.Queries, error) {
+func Init() (*db.Queries, error) {
 	ctx := context.Background()
 	sqlite, err := sql.Open("sqlite3", ":memory:")
 

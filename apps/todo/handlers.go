@@ -1,19 +1,19 @@
-package handlers
+package main
 
 import (
-	"golang-template-htmx-alpine/internal/model"
-	"golang-template-htmx-alpine/internal/templates"
-	"golang-template-htmx-alpine/internal/todo"
+	"golang-template-htmx-alpine/apps/todo/views"
 	"log/slog"
 	"net/http"
 	"strconv"
 )
 
-func TodoListHandler(render templates.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func todoListHandler(render views.RenderFunc, todoService *TodoService) http.HandlerFunc {
 	type todoPageData struct {
 		Title string
-		Items []model.Todo
+		Items []Todo
 	}
+
+	slog.Info("todo list handler")
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		todos, err := todoService.List(r.Context())
@@ -28,19 +28,19 @@ func TodoListHandler(render templates.RenderFunc, todoService *todo.TodoService)
 	}
 }
 
-func CreateTodoHandler(logger *slog.Logger, render templates.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func createTodoHandler(render views.RenderFunc, todoService *TodoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		t := todoService.FromRequest(r)
 		todo, err := todoService.CreateFromForm(r.Context(), t)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		logger.Info("todo created", "data", todo)
+		slog.Info("todo created", "data", todo)
 		render(w, t, "todo")
 	}
 }
 
-func GetTodoFormHandler(logger *slog.Logger, render templates.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func getTodoFormHandler(render views.RenderFunc, todoService *TodoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -53,12 +53,12 @@ func GetTodoFormHandler(logger *slog.Logger, render templates.RenderFunc, todoSe
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		logger.Info("todo form requested", "name", t.Name)
+		slog.Info("todo form requested", "name", t.Name)
 		render(w, t, "form")
 	}
 }
 
-func UpdateTodoHandler(logger *slog.Logger, render templates.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func updateTodoHandler(render views.RenderFunc, todoService *TodoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -72,12 +72,12 @@ func UpdateTodoHandler(logger *slog.Logger, render templates.RenderFunc, todoSer
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		logger.Info("todo updated", "name", t.Name)
+		slog.Info("todo updated", "name", t.Name)
 		render(w, t, "todo")
 	}
 }
 
-func DeleteTodoHandler(logger *slog.Logger, todoService *todo.TodoService) http.HandlerFunc {
+func deleteTodoHandler(todoService *TodoService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -90,13 +90,14 @@ func DeleteTodoHandler(logger *slog.Logger, todoService *todo.TodoService) http.
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		logger.Info("todo deleted", "id", id)
+		slog.Info("todo deleted", "id", id)
 		w.WriteHeader(http.StatusOK)
 	}
 }
 
-func HealthzHandler(w http.ResponseWriter, r *http.Request) {
+func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	slog.Info("health check")
 	_, err := w.Write([]byte("OK"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

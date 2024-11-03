@@ -21,30 +21,36 @@ func WaitForReady(
 			endpoint,
 			nil,
 		)
+
 		if err != nil {
 			return fmt.Errorf("failed to create request: %w", err)
 		}
 
 		resp, err := client.Do(req)
+
 		if err != nil {
-			fmt.Printf("Error making request: %s\n", err.Error())
 			continue
 		}
+
 		if resp.StatusCode == http.StatusOK {
-			fmt.Println("Endpoint is ready!")
-			resp.Body.Close()
+			fmt.Println("Server is ready")
+			if err := resp.Body.Close(); err != nil {
+				return fmt.Errorf("error closing response body: %w", err)
+			}
 			return nil
 		}
-		resp.Body.Close()
+
+		if err := resp.Body.Close(); err != nil {
+			return fmt.Errorf("error closing response body: %w", err)
+		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			if time.Since(startTime) >= timeout {
-				return fmt.Errorf("timeout reached while waiting for endpoint")
+			if time.Since(startTime) > timeout {
+				return fmt.Errorf("timeout waiting for server to be ready")
 			}
-			// wait a little while between checks
 			time.Sleep(250 * time.Millisecond)
 		}
 	}

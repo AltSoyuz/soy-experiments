@@ -7,7 +7,9 @@ ifeq ($(PKG_TAG),)
 PKG_TAG := $(BUILDINFO_TAG)
 endif
 
-GO_BUILDINFO = -X '$(PKG_PREFIX)/pkg/buildinfo.Version=todo-server$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
+GO_BUILDINFO = -X '$(PKG_PREFIX)/lib/buildinfo.Version=todo$(DATEINFO_TAG)-$(BUILDINFO_TAG)'
+
+include apps/*/Makefile
 
 vet:
 	go vet ./...
@@ -24,8 +26,8 @@ test-race:
 test-full:
 	go test -coverprofile=coverage.txt -covermode=atomic ./...
 
-build:
-	go build -ldflags "$(GO_BUILDINFO)" -o bin/todo-server cmd/todo-server/main.go
+app-local:
+	CGO_ENABLED=1 go build $(RACE) -ldflags "$(GO_BUILDINFO)" -o bin/$(APP_NAME)$(RACE) $(PKG_PREFIX)/apps/$(APP_NAME)
 
 update:
 	go get -u ./...

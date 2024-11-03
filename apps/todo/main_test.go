@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"errors"
-	"golang-template-htmx-alpine/pkg/httpserver"
+	"golang-template-htmx-alpine/lib/httpserver"
 	"io"
 	"net/http"
 	"strings"
@@ -24,7 +24,7 @@ func TestMain(t *testing.T) {
 	}()
 
 	// Wait for server
-	if err := httpserver.WaitForReady(ctx, 1*time.Second, baseURL+"/healthz"); err != nil {
+	if err := httpserver.WaitForReady(ctx, 1*time.Second, baseURL+"/health"); err != nil {
 		t.Fatalf("server not ready: %v", err)
 	}
 
