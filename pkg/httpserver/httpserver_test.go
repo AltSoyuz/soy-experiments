@@ -18,7 +18,7 @@ func TestWaitForReady(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := WaitForReady(ctx, 5*time.Second, ts.URL)
+	err := WaitForReady(ctx, 2*time.Second, ts.URL)
 	if err != nil {
 		t.Errorf("waitForReady() error = %v", err)
 	}

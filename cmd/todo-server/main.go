@@ -3,8 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"golang-template-htmx-alpine/internal/queries"
 	"golang-template-htmx-alpine/internal/server"
 	"golang-template-htmx-alpine/internal/templates"
+	"golang-template-htmx-alpine/internal/todo"
 	"golang-template-htmx-alpine/pkg/buildinfo"
 	"log/slog"
 	"net"
@@ -31,12 +33,19 @@ func run(ctx context.Context) error {
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	tmpl, err := templates.Init(logger)
+	tmpl, err := templates.New(logger)
 	if err != nil {
 		return fmt.Errorf("error initializing templates: %w", err)
 	}
 
-	srv := server.New(logger, tmpl)
+	store, err := queries.New()
+	if err != nil {
+		return fmt.Errorf("error initializing store: %w", err)
+	}
+
+	todoService := todo.New(logger, store)
+
+	srv := server.New(logger, tmpl, todoService)
 
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort("", "8080"),

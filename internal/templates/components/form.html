@@ -1,5 +1,5 @@
 {{ define "form" }}
-<form hx-put="/todos/{{ .Name}}">
+<form hx-put="/todos/{{ .Id }}">
     <label for="name">Name</label>
     <input type="text" id="title" name="name" value="{{ .Name }}">
     <label for="description">Description</label>

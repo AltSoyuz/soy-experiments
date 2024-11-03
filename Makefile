@@ -33,9 +33,9 @@ update:
 golangci-lint: install-golangci-lint
 	golangci-lint run
 
-check-all: fmt vet golangci-lint govulncheck
+check-all: fmt vet golangci-lint govulncheck 
 
-clean-checkers: remove-golangci-lint remove-govulncheck
+clean-checkers: remove-golangci-lint remove-govulncheck sqlc
 
 install-govulncheck:
 	which govulncheck || go install golang.org/x/vuln/cmd/govulncheck@latest
@@ -48,3 +48,13 @@ install-golangci-lint:
 
 remove-golangci-lint:
 	rm -rf `which golangci-lint`
+
+install-sqlc:
+	which sqlc || go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+
+sqlc: install-sqlc
+	sqlc vet
+	sqlc generate
+
+remove-sqlc:
+	rm -rf `which sqlc`

@@ -84,24 +84,24 @@ func TestMain(t *testing.T) {
 			`<script src="https://unpkg.com/htmx.org`,
 		)
 	})
-
 	t.Run("CRUD operations", func(t *testing.T) {
 		// Create
 		resp := makeRequest(t, http.MethodPost, "/todos",
 			"name=Test+Todo&description=This+is+a+test+todo", true)
 		assertResponse(t, resp, http.StatusOK, "Test Todo")
 
+		// Read
+		resp = makeRequest(t, http.MethodGet, "/todos/1", "", false)
+		assertResponse(t, resp, http.StatusOK, "Test Todo", "This is a test todo")
+
 		// Update
-		resp = makeRequest(t, http.MethodPut, "/todos/Test+Todo",
-			"name=Updated+Todo&description=This+is+an+updated+test+todo", true)
-		assertResponse(t, resp, http.StatusOK,
-			"Updated Todo",
-			"This is an updated test todo",
-		)
+		resp = makeRequest(t, http.MethodPut, "/todos/1", "name=Updated+Todo", true)
+		assertResponse(t, resp, http.StatusOK, "Updated Todo")
 
 		// Delete
-		resp = makeRequest(t, http.MethodDelete, "/todos/Updated+Todo", "", true)
+		resp = makeRequest(t, http.MethodDelete, "/todos/1", "", true)
 		assertResponse(t, resp, http.StatusOK)
+
 	})
 
 	// Check for server errors

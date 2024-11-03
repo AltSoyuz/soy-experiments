@@ -10,7 +10,7 @@ import (
 //go:embed components/* pages/*
 var embedded embed.FS
 
-func Init(logger *slog.Logger) (RenderFunc, error) {
+func New(logger *slog.Logger) (RenderFunc, error) {
 	tmpl, err := template.ParseFS(embedded, "pages/*.html", "components/*.html")
 	if err != nil {
 		return nil, err

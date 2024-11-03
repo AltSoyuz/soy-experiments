@@ -13,7 +13,7 @@ var testLogger = slog.New(slog.NewTextHandler(io.Discard, nil))
 
 // Test for Init function
 func TestInit(t *testing.T) {
-	renderFunc, err := Init(testLogger)
+	renderFunc, err := New(testLogger)
 	if err != nil {
 		t.Fatalf("Init() returned an error: %v", err)
 	}
