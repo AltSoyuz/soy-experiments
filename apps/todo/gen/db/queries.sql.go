@@ -10,6 +10,23 @@ import (
 	"database/sql"
 )
 
+const createSession = `-- name: CreateSession :one
+INSERT INTO session (id, user_id, expires_at) VALUES (?, ?, ?) RETURNING id, user_id, expires_at
+`
+
+type CreateSessionParams struct {
+	ID        string
+	UserID    int64
+	ExpiresAt int64
+}
+
+func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
+	row := q.db.QueryRowContext(ctx, createSession, arg.ID, arg.UserID, arg.ExpiresAt)
+	var i Session
+	err := row.Scan(&i.ID, &i.UserID, &i.ExpiresAt)
+	return i, err
+}
+
 const createTodo = `-- name: CreateTodo :one
 INSERT INTO todos (name, description) VALUES (?, ?) RETURNING id, name, description
 `
@@ -24,6 +41,31 @@ func (q *Queries) CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, e
 	var i Todo
 	err := row.Scan(&i.ID, &i.Name, &i.Description)
 	return i, err
+}
+
+const createUser = `-- name: CreateUser :one
+INSERT INTO user (username, password_hash) VALUES (?, ?) RETURNING id, username, password_hash
+`
+
+type CreateUserParams struct {
+	Username     string
+	PasswordHash string
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.PasswordHash)
+	var i User
+	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	return i, err
+}
+
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM session WHERE id = ?
+`
+
+func (q *Queries) DeleteSession(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteSession, id)
+	return err
 }
 
 const deleteTodo = `-- name: DeleteTodo :exec
@@ -73,6 +115,33 @@ func (q *Queries) GetTodos(ctx context.Context) ([]Todo, error) {
 	return items, nil
 }
 
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, username, password_hash FROM user WHERE username = ?
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	return i, err
+}
+
+const updateSession = `-- name: UpdateSession :one
+UPDATE session SET expires_at = ? WHERE id = ? RETURNING id, user_id, expires_at
+`
+
+type UpdateSessionParams struct {
+	ExpiresAt int64
+	ID        string
+}
+
+func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (Session, error) {
+	row := q.db.QueryRowContext(ctx, updateSession, arg.ExpiresAt, arg.ID)
+	var i Session
+	err := row.Scan(&i.ID, &i.UserID, &i.ExpiresAt)
+	return i, err
+}
+
 const updateTodo = `-- name: UpdateTodo :one
 UPDATE todos SET name = ?, description = ? WHERE id = ? RETURNING id, name, description
 `
@@ -87,5 +156,33 @@ func (q *Queries) UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, e
 	row := q.db.QueryRowContext(ctx, updateTodo, arg.Name, arg.Description, arg.ID)
 	var i Todo
 	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	return i, err
+}
+
+const validateSessionToken = `-- name: ValidateSessionToken :one
+SELECT s.id, s.user_id as session_user_id, s.expires_at, u.id AS user_id, u.username 
+FROM session s 
+INNER JOIN user u ON u.id = s.user_id 
+WHERE s.id = ?
+`
+
+type ValidateSessionTokenRow struct {
+	ID            string
+	SessionUserID int64
+	ExpiresAt     int64
+	UserID        int64
+	Username      string
+}
+
+func (q *Queries) ValidateSessionToken(ctx context.Context, id string) (ValidateSessionTokenRow, error) {
+	row := q.db.QueryRowContext(ctx, validateSessionToken, id)
+	var i ValidateSessionTokenRow
+	err := row.Scan(
+		&i.ID,
+		&i.SessionUserID,
+		&i.ExpiresAt,
+		&i.UserID,
+		&i.Username,
+	)
 	return i, err
 }

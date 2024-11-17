@@ -3,3 +3,15 @@ CREATE TABLE IF NOT EXISTS todos (
 	name TEXT NOT NULL,
 	description TEXT
 );
+
+CREATE TABLE IF NOT EXISTS user (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+	username TEXT NOT NULL,
+	password_hash TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS session (
+    id TEXT NOT NULL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES user(id),
+    expires_at INTEGER NOT NULL
+);

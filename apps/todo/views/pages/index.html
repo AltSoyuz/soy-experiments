@@ -11,6 +11,13 @@
 </head>
 
 <body>
+    <header>
+        <div>
+            <h1>{{ .Username }}</h1>
+            <button hx-get="/logout">Logout</button>
+        </div>
+    </header>
+    
     <h1>{{ .Title }}</h1>
     <h2> New Todo </h2>
     <form hx-post="/todos" hx-target="ul" hx-swap="beforeend">

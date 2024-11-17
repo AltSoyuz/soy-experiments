@@ -41,6 +41,11 @@ type RenderFunc func(w io.Writer, data interface{}, name string)
 
 func newRender(tmpl *template.Template) RenderFunc {
 	return func(w io.Writer, data interface{}, name string) {
+		// check if template exists
+		if tmpl.Lookup(name) == nil {
+			slog.Error("template not found", "template", name)
+			return
+		}
 		err := tmpl.ExecuteTemplate(w, name, data)
 		if err != nil {
 			slog.Error("failed to execute template", "error", err, "template", name)

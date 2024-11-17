@@ -55,3 +55,16 @@ func WaitForReady(
 		}
 	}
 }
+
+func CSRFProtection(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			origin := r.Header.Get("Origin")
+			if origin == "" || (origin != "https://example.com" && origin != "http://localhost:8080") {
+				http.Error(w, "Forbidden: Invalid origin", http.StatusForbidden)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
+}

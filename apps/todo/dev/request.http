@@ -1,0 +1,9 @@
+### POST request for creating a session
+POST http://localhost:8080/create-session
+Content-Type: application/json
+Origin: http://localhost:8080
+
+{
+  "username": "your-username",
+  "password": "your-password"
+}

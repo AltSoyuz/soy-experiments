@@ -8,8 +8,20 @@ import (
 	"database/sql"
 )
 
+type Session struct {
+	ID        string
+	UserID    int64
+	ExpiresAt int64
+}
+
 type Todo struct {
 	ID          int64
 	Name        string
 	Description sql.NullString
+}
+
+type User struct {
+	ID           int64
+	Username     string
+	PasswordHash string
 }

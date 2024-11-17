@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"golang-template-htmx-alpine/apps/todo/auth"
 	"golang-template-htmx-alpine/apps/todo/queries"
+	"golang-template-htmx-alpine/apps/todo/todo"
 	"golang-template-htmx-alpine/apps/todo/views"
 	"golang-template-htmx-alpine/lib/buildinfo"
 	"log/slog"
@@ -42,9 +44,17 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("error initializing store: %w", err)
 	}
 
-	todoService := newTodoService(q)
+	sm := auth.NewSessionManager(q)
+	limiter := auth.NewLimiter()
+	todoService := todo.NewTodoService(q)
 
-	srv := newServer(tmpl, todoService)
+	srv := newServer(
+		tmpl,
+		q,
+		todoService,
+		sm,
+		limiter,
+	)
 
 	httpServer := &http.Server{
 		Addr:    net.JoinHostPort("", "8080"),
