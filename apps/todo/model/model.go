@@ -13,7 +13,6 @@ type Session struct {
 }
 
 type User struct {
-	Id           int64
-	Username     string
-	PasswordHash string
+	Id       int64
+	Username string
 }

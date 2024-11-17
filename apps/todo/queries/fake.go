@@ -10,12 +10,14 @@ import (
 type FakeQuerier struct {
 	Sessions map[string]db.CreateSessionParams
 	Todos    map[int64]db.CreateTodoParams
+	Users    map[int64]db.CreateUserParams
 }
 
 func NewFakeQuerier() *FakeQuerier {
 	return &FakeQuerier{
 		Sessions: make(map[string]db.CreateSessionParams),
 		Todos:    make(map[int64]db.CreateTodoParams),
+		Users:    make(map[int64]db.CreateUserParams),
 	}
 }
 
@@ -24,11 +26,7 @@ func (f *FakeQuerier) CreateSession(ctx context.Context, arg db.CreateSessionPar
 		return db.Session{}, errors.New("invalid session parameters")
 	}
 	f.Sessions[arg.ID] = arg
-	return db.Session{
-		ID:        arg.ID,
-		UserID:    arg.UserID,
-		ExpiresAt: arg.ExpiresAt,
-	}, nil
+	return db.Session(arg), nil
 }
 
 // Implement other methods as no-op or panics if not needed for this test
@@ -52,7 +50,20 @@ func (f *FakeQuerier) CreateTodo(ctx context.Context, arg db.CreateTodoParams) (
 }
 
 func (f *FakeQuerier) CreateUser(ctx context.Context, arg db.CreateUserParams) (db.User, error) {
-	panic("not implemented")
+	if arg.Username == "" || arg.PasswordHash == "" {
+		return db.User{}, errors.New("invalid user parameters")
+	}
+	randomInt := make([]byte, 8)
+	if _, err := rand.Read(randomInt); err != nil {
+		return db.User{}, err
+	}
+	user := db.User{
+		ID:           int64(randomInt[0]),
+		Username:     arg.Username,
+		PasswordHash: arg.PasswordHash,
+	}
+	f.Users[user.ID] = arg
+	return user, nil
 }
 
 func (f *FakeQuerier) DeleteSession(ctx context.Context, id string) error {
@@ -90,7 +101,16 @@ func (f *FakeQuerier) GetTodos(ctx context.Context) ([]db.Todo, error) {
 }
 
 func (f *FakeQuerier) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
-	panic("not implemented")
+	for id, user := range f.Users {
+		if user.Username == username {
+			return db.User{
+				ID:           id,
+				Username:     user.Username,
+				PasswordHash: user.PasswordHash,
+			}, nil
+		}
+	}
+	return db.User{}, errors.New("user not found")
 }
 
 func (f *FakeQuerier) UpdateSession(ctx context.Context, arg db.UpdateSessionParams) (db.Session, error) {
@@ -103,11 +123,7 @@ func (f *FakeQuerier) UpdateSession(ctx context.Context, arg db.UpdateSessionPar
 	}
 	session.ExpiresAt = arg.ExpiresAt
 	f.Sessions[arg.ID] = session
-	return db.Session{
-		ID:        session.ID,
-		UserID:    session.UserID,
-		ExpiresAt: session.ExpiresAt,
-	}, nil
+	return db.Session(session), nil
 
 }
 

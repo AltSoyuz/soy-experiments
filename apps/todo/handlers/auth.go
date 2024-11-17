@@ -1,33 +1,30 @@
 package handlers
 
 import (
-	"database/sql"
-	"errors"
 	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"golang-template-htmx-alpine/apps/todo/views"
 	"golang-template-htmx-alpine/lib/argon2id"
 	"log/slog"
 	"net/http"
 )
 
-func Logout(sm *auth.SessionManager) http.HandlerFunc {
+func handleLogout(as *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		s, err := sm.GetSessionFrom(r)
+		s, err := as.GetSessionFrom(r)
 		if err != nil {
 			slog.Error("error getting session", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		if s.Session == nil {
+		if s == nil {
 			slog.Warn("no session found")
 			w.Header().Set("HX-Redirect", "/login")
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
 
-		err = sm.InvalidateSession(r.Context(), s.Session.Id)
+		err = as.InvalidateSession(r.Context(), s.Id)
 		if err != nil {
 			slog.Error("error invalidating session", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -37,33 +34,49 @@ func Logout(sm *auth.SessionManager) http.HandlerFunc {
 		auth.DeleteSessionCookie(w)
 
 		w.Header().Set("HX-Redirect", "/login")
-		return
 	}
 }
 
-func AuthWithPassword(render views.RenderFunc, queries *db.Queries, sm *auth.SessionManager) http.HandlerFunc {
-	type Data struct {
+func handleAuthWithPassword(render views.RenderFunc, as *auth.Service) http.HandlerFunc {
+	type ErrorFragmentData struct {
 		Message string
 	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+
+	type LoginForm struct {
+		Username string
+		Password string
+	}
+
+	getLoginFrom := func(r *http.Request) (LoginForm, error) {
+		err := r.ParseForm()
+		if err != nil {
+			slog.Error("error parsing form", "error", err)
+			return LoginForm{}, err
+		}
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 
-		user, err := queries.GetUserByUsername(r.Context(), username)
+		return LoginForm{Username: username, Password: password}, nil
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		form, err := getLoginFrom(r)
 		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				slog.Warn("user not found", "username", username)
-				w.WriteHeader(http.StatusUnauthorized)
-				render(w, Data{Message: "Invalid username or password"}, "error-msg")
-				return
-			}
-			slog.Warn("error getting user", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			slog.Error("error getting login form", "error", err)
+			w.WriteHeader(http.StatusBadRequest)
+			render(w, ErrorFragmentData{Message: "Invalid form data"}, "error-msg")
 			return
 		}
 
-		validPassword, err := argon2id.Verify(user.PasswordHash, password)
+		user, err := as.GetUserByUsername(r.Context(), form.Username)
+		if err != nil {
+			slog.Error("error getting user", "error", err)
+			w.WriteHeader(http.StatusUnauthorized)
+			render(w, ErrorFragmentData{Message: "Invalid username or password"}, "error-msg")
+			return
+		}
+
+		validPassword, err := argon2id.Verify(user.PasswordHash, form.Password)
 		if err != nil {
 			slog.Warn("error verifying password", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -71,34 +84,34 @@ func AuthWithPassword(render views.RenderFunc, queries *db.Queries, sm *auth.Ses
 		}
 
 		if !validPassword {
-			slog.Warn("invalid password", "username", username)
+			slog.Warn("invalid password", "username", form.Username)
 			w.WriteHeader(http.StatusUnauthorized)
-			render(w, Data{Message: "Invalid username or password"}, "error-msg")
+			render(w, ErrorFragmentData{Message: "Invalid username or password"}, "error-msg")
 			return
 		}
 
-		token, err := sm.CreateSession(r.Context(), user.ID)
+		token, err := as.CreateSession(r.Context(), user.ID)
 		if err != nil {
 			slog.Error("error creating session", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		result, err := sm.ValidateSession(r.Context(), token)
+		session, _, err := as.ValidateSession(r.Context(), token)
 		if err != nil {
 			slog.Error("error validating session", "error", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		auth.SetSessionCookie(w, token, result.Session.ExpiresAt)
+		auth.SetSessionCookie(w, token, session.ExpiresAt)
 
 		w.Header().Set("HX-Redirect", "/")
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
-func RenderRegisterView(render views.RenderFunc) http.HandlerFunc {
+func handleRenderRegisterView(render views.RenderFunc) http.HandlerFunc {
 	type loginPageData struct {
 		Title string
 	}
@@ -107,7 +120,7 @@ func RenderRegisterView(render views.RenderFunc) http.HandlerFunc {
 	}
 }
 
-func RenderLoginView(render views.RenderFunc) http.HandlerFunc {
+func handleRenderLoginView(render views.RenderFunc) http.HandlerFunc {
 	type loginPageData struct {
 		Title string
 	}

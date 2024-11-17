@@ -10,7 +10,7 @@ import (
 	"strconv"
 )
 
-func RenderTodoList(render views.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func handleRenderTodoList(render views.RenderFunc, todoStore *todo.TodoStore) http.HandlerFunc {
 	type todoPageData struct {
 		Title    string
 		Items    []model.Todo
@@ -23,7 +23,7 @@ func RenderTodoList(render views.RenderFunc, todoService *todo.TodoService) http
 			return
 		}
 
-		todos, err := todoService.List(r.Context())
+		todos, err := todoStore.List(r.Context())
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -36,10 +36,10 @@ func RenderTodoList(render views.RenderFunc, todoService *todo.TodoService) http
 	}
 }
 
-func CreateTodoFragment(render views.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func handleCreateTodoFragment(render views.RenderFunc, todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		t := todoService.From(r)
-		todo, err := todoService.CreateFromForm(r.Context(), t)
+		t := todoStore.From(r)
+		todo, err := todoStore.CreateFromForm(r.Context(), t)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -48,7 +48,7 @@ func CreateTodoFragment(render views.RenderFunc, todoService *todo.TodoService) 
 	}
 }
 
-func GetTodoFormFragment(render views.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func handleGetTodoFormFragment(render views.RenderFunc, todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -56,7 +56,7 @@ func GetTodoFormFragment(render views.RenderFunc, todoService *todo.TodoService)
 			http.Error(w, "Invalid ID", http.StatusBadRequest)
 			return
 		}
-		t, err := todoService.FindById(r.Context(), id)
+		t, err := todoStore.FindById(r.Context(), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -66,7 +66,7 @@ func GetTodoFormFragment(render views.RenderFunc, todoService *todo.TodoService)
 	}
 }
 
-func UpdateTodoFragment(render views.RenderFunc, todoService *todo.TodoService) http.HandlerFunc {
+func handleUpdateTodoFragment(render views.RenderFunc, todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -75,8 +75,8 @@ func UpdateTodoFragment(render views.RenderFunc, todoService *todo.TodoService) 
 			return
 		}
 
-		todoForm := todoService.From(r)
-		t, err := todoService.UpdateById(r.Context(), id, todoForm)
+		todoForm := todoStore.From(r)
+		t, err := todoStore.UpdateById(r.Context(), id, todoForm)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -85,7 +85,7 @@ func UpdateTodoFragment(render views.RenderFunc, todoService *todo.TodoService) 
 	}
 }
 
-func DeleteTodo(todoService *todo.TodoService) http.HandlerFunc {
+func handleDeleteTodo(todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		idStr := r.PathValue("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
@@ -94,7 +94,7 @@ func DeleteTodo(todoService *todo.TodoService) http.HandlerFunc {
 			return
 		}
 
-		err = todoService.DeleteById(r.Context(), id)
+		err = todoStore.DeleteById(r.Context(), id)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

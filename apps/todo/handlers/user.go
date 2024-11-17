@@ -2,57 +2,51 @@ package handlers
 
 import (
 	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"golang-template-htmx-alpine/apps/todo/views"
-	"golang-template-htmx-alpine/lib/argon2id"
 	"log/slog"
 	"net/http"
 )
 
-func CreateUser(render views.RenderFunc, queries *db.Queries) http.HandlerFunc {
-	type Data struct {
+// handleCreateUser creates a new user account and redirects to the login page.
+func handleCreateUser(render views.RenderFunc, authService *auth.Service) http.HandlerFunc {
+	type ErrorFragmentData struct {
 		Message string
 	}
-	return func(w http.ResponseWriter, r *http.Request) {
-		r.ParseForm()
+	type RegisterForm struct {
+		Username string
+		Password string
+	}
+	getRegisterForm := func(r *http.Request) (RegisterForm, error) {
+		err := r.ParseForm()
+		if err != nil {
+			slog.Error("error parsing form", "error", err)
+			return RegisterForm{}, err
+		}
 		username := r.FormValue("username")
 		password := r.FormValue("password")
 
-		if password == "" || len(password) > 127 {
-			slog.Warn("invalid password", "password", password)
-			w.WriteHeader(http.StatusBadRequest)
-			render(w, Data{Message: "Invalid password"}, "error-msg")
-			return
-		}
+		return RegisterForm{Username: username, Password: password}, nil
+	}
 
-		err := auth.VerifyPasswordStrength(password)
+	return func(w http.ResponseWriter, r *http.Request) {
+		form, err := getRegisterForm(r)
 		if err != nil {
-			slog.Warn("password does not meet requirements", "error", err)
+			slog.Error("error getting register form", "error", err)
 			w.WriteHeader(http.StatusBadRequest)
-			render(w, Data{Message: "Password does not meet requirements"}, "error-msg")
+			render(w, ErrorFragmentData{Message: "Invalid form data"}, "error-msg")
 			return
 		}
 
-		passwordHash, err := argon2id.Hash(password)
-		if err != nil {
-			slog.Error("error hashing password", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		_, err = queries.CreateUser(r.Context(), db.CreateUserParams{
-			Username:     username,
-			PasswordHash: passwordHash,
-		})
+		err = authService.CreateUser(r.Context(), form.Username, form.Password)
 
 		if err != nil {
 			slog.Error("error creating user", "error", err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			w.WriteHeader(http.StatusBadRequest)
+			render(w, ErrorFragmentData{Message: "Password does not meet requirements"}, "error-msg")
 			return
 		}
 
 		w.Header().Set("HX-Redirect", "/login")
 		w.WriteHeader(http.StatusNoContent)
-		return
 	}
 }

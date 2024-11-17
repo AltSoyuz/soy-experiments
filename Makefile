@@ -27,7 +27,7 @@ test-full:
 	go test -coverprofile=coverage.txt -covermode=atomic ./...
 
 app-local:
-	CGO_ENABLED=1 go build $(RACE) -ldflags "$(GO_BUILDINFO)" -o bin/$(APP_NAME)$(RACE) $(PKG_PREFIX)/apps/$(APP_NAME)
+	CGO_ENABLED=1 go build $(RACE) -ldflags "$(GO_BUILDINFO)" -o bin/$(APP_NAME)$(RACE) $(PKG_PREFIX)/apps/$(APP_NAME)/cmd
 
 update:
 	go get -u ./...

@@ -11,7 +11,7 @@ import (
 
 func TestCreateFromForm(t *testing.T) {
 	fakeQuerier := queries.NewFakeQuerier()
-	ts := todo.NewTodoService(fakeQuerier)
+	ts := todo.Init(fakeQuerier)
 
 	ctx := context.Background()
 

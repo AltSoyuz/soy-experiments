@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -17,15 +17,7 @@ import (
 	"time"
 )
 
-func main() {
-	ctx := context.Background()
-	if err := run(ctx); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %s\n", err)
-		os.Exit(1)
-	}
-}
-
-func run(ctx context.Context) error {
+func Run(ctx context.Context) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
@@ -44,16 +36,13 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("error initializing store: %w", err)
 	}
 
-	sm := auth.NewSessionManager(q)
-	limiter := auth.NewLimiter()
-	todoService := todo.NewTodoService(q)
+	authService := auth.Init(q)
+	todoStore := todo.Init(q)
 
-	srv := newServer(
+	srv := New(
 		tmpl,
-		q,
-		todoService,
-		sm,
-		limiter,
+		authService,
+		todoStore,
 	)
 
 	httpServer := &http.Server{

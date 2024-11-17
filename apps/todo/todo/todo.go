@@ -9,17 +9,17 @@ import (
 	"net/http"
 )
 
-type TodoService struct {
+type TodoStore struct {
 	queries db.Querier
 }
 
-func NewTodoService(queries db.Querier) *TodoService {
-	return &TodoService{
+func Init(queries db.Querier) *TodoStore {
+	return &TodoStore{
 		queries: queries,
 	}
 }
 
-func (s *TodoService) List(ctx context.Context) ([]model.Todo, error) {
+func (s *TodoStore) List(ctx context.Context) ([]model.Todo, error) {
 	todos, err := s.queries.GetTodos(ctx)
 	if err != nil {
 		slog.Error("error fetching todos", "error", err)
@@ -38,14 +38,14 @@ func (s *TodoService) List(ctx context.Context) ([]model.Todo, error) {
 	return list, nil
 }
 
-func (s *TodoService) From(r *http.Request) model.Todo {
+func (s *TodoStore) From(r *http.Request) model.Todo {
 	return model.Todo{
 		Name:        r.FormValue("name"),
 		Description: r.FormValue("description"),
 	}
 }
 
-func (s *TodoService) CreateFromForm(ctx context.Context, t model.Todo) (model.Todo, error) {
+func (s *TodoStore) CreateFromForm(ctx context.Context, t model.Todo) (model.Todo, error) {
 	todo, err := s.queries.CreateTodo(ctx, db.CreateTodoParams{
 		Name:        t.Name,
 		Description: sql.NullString{String: t.Description, Valid: true},
@@ -63,7 +63,7 @@ func (s *TodoService) CreateFromForm(ctx context.Context, t model.Todo) (model.T
 	}, nil
 }
 
-func (s *TodoService) FindById(ctx context.Context, id int64) (model.Todo, error) {
+func (s *TodoStore) FindById(ctx context.Context, id int64) (model.Todo, error) {
 	todo, err := s.queries.GetTodo(ctx, id)
 	if err != nil {
 		slog.Error("error fetching todo", "error", err)
@@ -77,7 +77,7 @@ func (s *TodoService) FindById(ctx context.Context, id int64) (model.Todo, error
 	}, nil
 }
 
-func (s *TodoService) DeleteById(ctx context.Context, id int64) error {
+func (s *TodoStore) DeleteById(ctx context.Context, id int64) error {
 	if err := s.queries.DeleteTodo(ctx, id); err != nil {
 		slog.Error("error deleting todo", "error", err)
 		return err
@@ -86,7 +86,7 @@ func (s *TodoService) DeleteById(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *TodoService) Create(ctx context.Context, todo model.Todo) error {
+func (s *TodoStore) Create(ctx context.Context, todo model.Todo) error {
 	if _, err := s.queries.CreateTodo(ctx, db.CreateTodoParams{
 		Name:        todo.Name,
 		Description: sql.NullString{String: todo.Description, Valid: true},
@@ -98,7 +98,7 @@ func (s *TodoService) Create(ctx context.Context, todo model.Todo) error {
 	return nil
 }
 
-func (s *TodoService) UpdateById(ctx context.Context, id int64, todo model.Todo) (model.Todo, error) {
+func (s *TodoStore) UpdateById(ctx context.Context, id int64, todo model.Todo) (model.Todo, error) {
 	t, err := s.queries.UpdateTodo(ctx, db.UpdateTodoParams{
 		ID:          id,
 		Name:        todo.Name,
