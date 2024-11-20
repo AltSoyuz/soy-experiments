@@ -3,6 +3,7 @@ package model
 type Todo struct {
 	Id          int64
 	Name        string
+	UserId      int64
 	Description string
 }
 
@@ -13,6 +14,7 @@ type Session struct {
 }
 
 type User struct {
-	Id       int64
-	Username string
+	Id            int64
+	Email         string
+	EmailVerified bool
 }

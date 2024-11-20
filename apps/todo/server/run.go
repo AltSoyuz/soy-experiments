@@ -2,44 +2,68 @@ package server
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/queries"
+	"golang-template-htmx-alpine/apps/todo/config"
+	"golang-template-htmx-alpine/apps/todo/store"
 	"golang-template-htmx-alpine/apps/todo/todo"
-	"golang-template-htmx-alpine/apps/todo/views"
+	"golang-template-htmx-alpine/apps/todo/web"
 	"golang-template-htmx-alpine/lib/buildinfo"
+	"log"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"time"
 )
 
+var (
+	configPathFlag = flag.String("config", "./apps/todo/config/config.yml", "Path to the configuration file")
+)
+
 func Run(ctx context.Context) error {
+	flag.Parse()
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
-
-	buildinfo.Init()
 
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	tmpl, err := views.Init()
+	buildinfo.Init()
+
+	slog.Info("Configuration path", "path", *configPathFlag)
+
+	// Build the absolute path to the configuration file
+	configPath, err := filepath.Abs(*configPathFlag)
+	if err != nil {
+		log.Fatalf("Failed to resolve absolute path for config: %v", err)
+	}
+
+	// Initialize the configuration
+	c, err := config.Init(configPath)
+	if err != nil {
+		return fmt.Errorf("error initializing config: %w", err)
+	}
+
+	tmpl, err := web.Init()
 	if err != nil {
 		return fmt.Errorf("error initializing templates: %w", err)
 	}
 
-	q, err := queries.Init()
+	q, err := store.Init()
 	if err != nil {
 		return fmt.Errorf("error initializing store: %w", err)
 	}
 
-	authService := auth.Init(q)
+	authService := auth.Init(c, q)
 	todoStore := todo.Init(q)
 
 	srv := New(
+		c,
 		tmpl,
 		authService,
 		todoStore,

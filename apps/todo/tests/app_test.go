@@ -20,7 +20,7 @@ func TestRegistrationRateLimit(t *testing.T) {
 		server.sendRequest(
 			http.MethodPost,
 			"/users",
-			"username="+randomUsername()+"&password=Str0ngP@ssw0rd!",
+			"email="+randomEmail()+"&password=Str0ngP@ssw0rd!",
 			false,
 		).assertStatus(expectedStatus)
 	}
@@ -33,7 +33,7 @@ func TestLoginRateLimit(t *testing.T) {
 	defer server.cancel()
 
 	for i := 0; i < defaultTestConfig.MaxRetries; i++ {
-		expectedStatus := http.StatusUnauthorized
+		expectedStatus := http.StatusOK
 		if i >= defaultTestConfig.RateLimit {
 			expectedStatus = http.StatusTooManyRequests
 		}
@@ -41,8 +41,8 @@ func TestLoginRateLimit(t *testing.T) {
 		server.sendRequest(
 			http.MethodPost,
 			"/authenticate/password",
-			"username="+randomUsername()+"&password=Str0ngP@ssw0rd!",
-			false,
+			"email="+randomEmail()+"&password=Str0ngP@ssw0rd!",
+			true,
 		).assertStatus(expectedStatus)
 	}
 
@@ -56,9 +56,9 @@ func TestWeakPasswordRegistration(t *testing.T) {
 	server.sendRequest(
 		http.MethodPost,
 		"/users",
-		"username="+randomUsername()+"&password=test",
+		"email="+randomEmail()+"&password=test",
 		false,
-	).assertStatus(http.StatusBadRequest).
+	).assertStatus(http.StatusOK).
 		assertContains("Password does not meet requirements")
 
 	checkServerErrors(t, errChan)
@@ -68,7 +68,7 @@ func TestSuccessfulRegistrationAndLoginAndLogout(t *testing.T) {
 	server, errChan := setupServer(t, defaultTestConfig)
 	defer server.cancel()
 
-	username := randomUsername()
+	username := randomEmail()
 	password := "Str0ngP@ssw0rd!"
 
 	// Register
@@ -78,7 +78,45 @@ func TestSuccessfulRegistrationAndLoginAndLogout(t *testing.T) {
 	resp := server.sendRequest(
 		http.MethodPost,
 		"/authenticate/password",
-		"username="+username+"&password="+password,
+		"email="+username+"&password="+password,
+		false,
+	).assertStatus(http.StatusNoContent).
+		assertRedirect("/")
+
+	// Test if redirect to verify email
+	server.sendRequest(
+		http.MethodGet,
+		"/",
+		"",
+		false,
+		resp.Cookies()...,
+	).assertContains("Verify Email")
+
+	// Verify email with invalid code
+	server.sendRequest(
+		http.MethodPost,
+		"/email-verification-request",
+		"code=",
+		true,
+		resp.Cookies()...,
+	).assertStatus(http.StatusOK).
+		assertContains("Invalid verification code")
+
+	// Verify email with valid code
+	server.sendRequest(
+		http.MethodPost,
+		"/email-verification-request",
+		"code="+"TEST",
+		true,
+		resp.Cookies()...,
+	).assertStatus(http.StatusNoContent).
+		assertRedirect("/login")
+
+	// Login
+	server.sendRequest(
+		http.MethodPost,
+		"/authenticate/password",
+		"email="+username+"&password="+password,
 		false,
 	).assertStatus(http.StatusNoContent).
 		assertRedirect("/")
@@ -96,6 +134,32 @@ func TestSuccessfulRegistrationAndLoginAndLogout(t *testing.T) {
 
 	checkServerErrors(t, errChan)
 
+}
+
+func TestFragment(t *testing.T) {
+	server, errChan := setupServer(t, defaultTestConfig)
+	defer server.cancel()
+
+	// Setup authenticated user
+	user := server.givenNewAuthenticatedUser()
+
+	// Create todo
+	server.givenNewTodo(user, "Test Todo", "This is a test todo")
+
+	server.sendRequest(
+		http.MethodGet,
+		"/todos/1/form",
+		"",
+		true,
+		user.Cookies...,
+	).assertStatus(http.StatusOK).
+		assertContains(
+			"Test Todo",
+			"This is a test todo",
+			"Save Modification",
+		)
+
+	checkServerErrors(t, errChan)
 }
 
 func TestTodoCRUD(t *testing.T) {

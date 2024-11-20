@@ -1,11 +1,14 @@
 package handlers
 
 import (
+	"fmt"
 	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/views"
+	"golang-template-htmx-alpine/apps/todo/gen/db"
+	"golang-template-htmx-alpine/apps/todo/web"
 	"golang-template-htmx-alpine/lib/argon2id"
 	"log/slog"
 	"net/http"
+	"time"
 )
 
 func handleLogout(as *auth.Service) http.HandlerFunc {
@@ -37,7 +40,7 @@ func handleLogout(as *auth.Service) http.HandlerFunc {
 	}
 }
 
-func handleAuthWithPassword(render views.RenderFunc, as *auth.Service) http.HandlerFunc {
+func handleAuthWithPassword(render web.RenderFunc, as *auth.Service) http.HandlerFunc {
 	type ErrorFragmentData struct {
 		Message string
 	}
@@ -53,7 +56,7 @@ func handleAuthWithPassword(render views.RenderFunc, as *auth.Service) http.Hand
 			slog.Error("error parsing form", "error", err)
 			return LoginForm{}, err
 		}
-		username := r.FormValue("username")
+		username := r.FormValue("email")
 		password := r.FormValue("password")
 
 		return LoginForm{Username: username, Password: password}, nil
@@ -63,15 +66,13 @@ func handleAuthWithPassword(render views.RenderFunc, as *auth.Service) http.Hand
 		form, err := getLoginFrom(r)
 		if err != nil {
 			slog.Error("error getting login form", "error", err)
-			w.WriteHeader(http.StatusBadRequest)
 			render(w, ErrorFragmentData{Message: "Invalid form data"}, "error-msg")
 			return
 		}
 
-		user, err := as.GetUserByUsername(r.Context(), form.Username)
+		user, err := as.GetUserByEmail(r.Context(), form.Username)
 		if err != nil {
 			slog.Error("error getting user", "error", err)
-			w.WriteHeader(http.StatusUnauthorized)
 			render(w, ErrorFragmentData{Message: "Invalid username or password"}, "error-msg")
 			return
 		}
@@ -85,7 +86,6 @@ func handleAuthWithPassword(render views.RenderFunc, as *auth.Service) http.Hand
 
 		if !validPassword {
 			slog.Warn("invalid password", "username", form.Username)
-			w.WriteHeader(http.StatusUnauthorized)
 			render(w, ErrorFragmentData{Message: "Invalid username or password"}, "error-msg")
 			return
 		}
@@ -111,7 +111,7 @@ func handleAuthWithPassword(render views.RenderFunc, as *auth.Service) http.Hand
 	}
 }
 
-func handleRenderRegisterView(render views.RenderFunc) http.HandlerFunc {
+func handleRenderRegisterView(render web.RenderFunc) http.HandlerFunc {
 	type loginPageData struct {
 		Title string
 	}
@@ -120,11 +120,116 @@ func handleRenderRegisterView(render views.RenderFunc) http.HandlerFunc {
 	}
 }
 
-func handleRenderLoginView(render views.RenderFunc) http.HandlerFunc {
+func handleRenderLoginView(render web.RenderFunc) http.HandlerFunc {
 	type loginPageData struct {
 		Title string
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		render(w, loginPageData{Title: "Login"}, "login.html")
+	}
+}
+
+type ErrorFragmentData struct {
+	Message string
+}
+
+func handleEmailVerificationRequest(as *auth.Service, render web.RenderFunc) http.HandlerFunc {
+	type CodeForm struct {
+		Code string `form:"code"`
+	}
+
+	getForm := func(r *http.Request) (CodeForm, error) {
+		err := r.ParseForm()
+		if err != nil {
+			slog.Error("error parsing form", "error", err)
+			return CodeForm{}, fmt.Errorf("error parsing form: %w", err)
+		}
+		code := r.FormValue("code")
+		if code == "" {
+			return CodeForm{}, fmt.Errorf("no code provided")
+		}
+		return CodeForm{Code: code}, nil
+	}
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		// Validate session and token
+		token := auth.GetTokenFromCookie(r)
+		if token == "" {
+			slog.Error("no token found")
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		_, user, err := as.ValidateSession(ctx, token)
+		if err != nil {
+			slog.Error("session validation failed", "error", err)
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		// Retrieve verification request
+		verificationRequest, err := as.GetUserEmailVerificationRequest(ctx, user)
+		if err != nil {
+			slog.Error("error getting email verification request", "error", err)
+			renderError(w, render, "Invalid verification request")
+			return
+		}
+
+		// Check request expiration
+		now := time.Now().Unix()
+		if now >= verificationRequest.ExpiresAt {
+			if err := as.Queries.DeleteUserEmailVerificationRequest(ctx, user.Id); err != nil {
+				slog.Error("failed to delete expired verification request", "error", err)
+			}
+			renderError(w, render, "Verification code expired")
+			return
+		}
+
+		// Verification form
+		form, err := getForm(r)
+		if err != nil {
+			slog.Error("error getting verification form", "error", err)
+			renderError(w, render, "Invalid verification code")
+			return
+		}
+
+		// Validate verification code
+		validCode, err := as.Queries.ValidateEmailVerificationRequest(ctx, db.ValidateEmailVerificationRequestParams{
+			UserID:    user.Id,
+			Code:      form.Code,
+			ExpiresAt: now,
+		})
+		if err != nil || validCode.Code == "" {
+			slog.Error("invalid verification code", "error", err)
+			renderError(w, render, "Invalid verification code")
+			return
+		}
+
+		// Mark email as verified
+		if err := as.SetUserEmailVerified(ctx, user.Id); err != nil {
+			slog.Error("failed to set email as verified", "error", err)
+			renderError(w, render, "Unable to verify email")
+			return
+		}
+
+		// Redirect on success
+		w.Header().Set("HX-Redirect", "/login")
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+
+// Helper function to render error messages
+func renderError(w http.ResponseWriter, render web.RenderFunc, message string) {
+	render(w, ErrorFragmentData{Message: message}, "error-msg")
+}
+
+func handleRenderVerifyEmail(render web.RenderFunc) http.HandlerFunc {
+	type loginPageData struct {
+		Title string
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		render(w, loginPageData{Title: "Register"}, "verify-email.html")
 	}
 }

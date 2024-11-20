@@ -6,6 +6,7 @@ import (
 	"golang-template-htmx-alpine/lib/httpserver"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -42,16 +43,16 @@ type TestResponse struct {
 
 // Helper functions for common test scenarios
 type AuthenticatedUser struct {
-	Username string
-	Cookies  []*http.Cookie
+	Email   string
+	Cookies []*http.Cookie
 }
 
-func (s *testServer) givenNewUser(username, password string) {
+func (s *testServer) givenNewUser(email, password string) {
 	s.t.Helper()
 	s.sendRequest(
 		http.MethodPost,
 		"/users",
-		"username="+username+"&password="+password,
+		"email="+email+"&password="+password,
 		false,
 	).assertStatus(http.StatusNoContent).
 		assertRedirect("/login")
@@ -59,22 +60,31 @@ func (s *testServer) givenNewUser(username, password string) {
 
 func (s *testServer) givenNewAuthenticatedUser() *AuthenticatedUser {
 	s.t.Helper()
-	username := randomUsername()
+	email := randomEmail()
 	password := "Str0ngP@ssw0rd!"
 
-	s.givenNewUser(username, password)
+	s.givenNewUser(email, password)
 
 	resp := s.sendRequest(
 		http.MethodPost,
 		"/authenticate/password",
-		"username="+username+"&password="+password,
+		"email="+email+"&password="+password,
 		false,
 	).assertStatus(http.StatusNoContent).
 		assertRedirect("/")
 
+	s.sendRequest(
+		http.MethodPost,
+		"/email-verification-request",
+		"code="+"TEST",
+		true,
+		resp.Cookies()...,
+	).assertStatus(http.StatusNoContent).
+		assertRedirect("/login")
+
 	return &AuthenticatedUser{
-		Username: username,
-		Cookies:  resp.Cookies(),
+		Email:   email,
+		Cookies: resp.Cookies(),
 	}
 }
 
@@ -130,6 +140,20 @@ func (tr *TestResponse) assertRedirect(expectedPath string) *TestResponse {
 func setupServer(t *testing.T, config TestConfig) (*testServer, chan error) {
 	t.Helper()
 	ctx, cancel := context.WithCancel(context.Background())
+
+	envVars := map[string]string{
+		"SMTP_HOST":    "smtp.mailtrap.io",
+		"SMTP_PORT":    "2525",
+		"SENDER_EMAIL": "email",
+		"SENDER_PASS":  "password",
+		"ENV":          "test",
+	}
+
+	// add test environment variables
+	for k, v := range envVars {
+		os.Setenv(k, v)
+		defer os.Unsetenv(k)
+	}
 
 	ts := &testServer{
 		baseURL: config.BaseURL,
@@ -196,6 +220,6 @@ func (s *testServer) sendRequest(method, path, body string, htmx bool, cookies .
 	}
 }
 
-func randomUsername() string {
-	return "testuser" + time.Now().Format("20060102150405")
+func randomEmail() string {
+	return "test" + time.Now().Format("20060102150405") + "@example.com"
 }

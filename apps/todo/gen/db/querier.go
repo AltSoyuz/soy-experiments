@@ -13,12 +13,17 @@ type Querier interface {
 	CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteSession(ctx context.Context, id string) error
-	DeleteTodo(ctx context.Context, id int64) error
-	GetTodo(ctx context.Context, id int64) (Todo, error)
-	GetTodos(ctx context.Context) ([]Todo, error)
-	GetUserByUsername(ctx context.Context, username string) (User, error)
+	DeleteTodo(ctx context.Context, arg DeleteTodoParams) error
+	DeleteUserEmailVerificationRequest(ctx context.Context, userID int64) error
+	GetTodo(ctx context.Context, arg GetTodoParams) (Todo, error)
+	GetTodos(ctx context.Context, userID int64) ([]Todo, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserEmailVerificationRequest(ctx context.Context, userID int64) (EmailVerificationRequest, error)
+	InsertUserEmailVerificationRequest(ctx context.Context, arg InsertUserEmailVerificationRequestParams) (EmailVerificationRequest, error)
+	SetUserEmailVerified(ctx context.Context, id int64) error
 	UpdateSession(ctx context.Context, arg UpdateSessionParams) (Session, error)
 	UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, error)
+	ValidateEmailVerificationRequest(ctx context.Context, arg ValidateEmailVerificationRequestParams) (EmailVerificationRequest, error)
 	ValidateSessionToken(ctx context.Context, id string) (ValidateSessionTokenRow, error)
 }
 

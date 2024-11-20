@@ -7,16 +7,19 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"database/sql"
+	"encoding/base32"
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"golang-template-htmx-alpine/apps/todo/config"
 	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"golang-template-htmx-alpine/apps/todo/model"
 	"golang-template-htmx-alpine/lib/argon2id"
 	"golang-template-htmx-alpine/lib/ratelimit"
 	"log/slog"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -36,21 +39,26 @@ const (
 
 type contextKey string
 
-const userContextKey contextKey = "user"
+const UserContextKey contextKey = "user"
 
 type Service struct {
-	Queries                 db.Querier
-	LimitLoginMiddleware    func(http.Handler) http.HandlerFunc
-	LimitRegisterMiddleware func(http.Handler) http.HandlerFunc
+	Config                     *config.Config
+	Queries                    db.Querier
+	LimitLoginMiddleware       func(http.Handler) http.HandlerFunc
+	LimitRegisterMiddleware    func(http.Handler) http.HandlerFunc
+	LimitVerifyEmailMiddleware func(http.Handler) http.HandlerFunc
 }
 
-func Init(queries db.Querier) *Service {
+func Init(config *config.Config, queries db.Querier) *Service {
 	loginLimiter := ratelimit.With(5, time.Minute)
 	registerLimiter := ratelimit.With(5, time.Minute)
+	verifyEmailLimiter := ratelimit.With(5, time.Minute)
 	return &Service{
-		Queries:                 queries,
-		LimitLoginMiddleware:    ratelimit.LimitMiddleware(loginLimiter),
-		LimitRegisterMiddleware: ratelimit.LimitMiddleware(registerLimiter),
+		Config:                     config,
+		Queries:                    queries,
+		LimitLoginMiddleware:       ratelimit.LimitMiddleware(loginLimiter),
+		LimitRegisterMiddleware:    ratelimit.LimitMiddleware(registerLimiter),
+		LimitVerifyEmailMiddleware: ratelimit.LimitMiddleware(verifyEmailLimiter),
 	}
 }
 
@@ -137,9 +145,16 @@ func (as *Service) ValidateSession(ctx context.Context, token string) (*model.Se
 		session.ExpiresAt = updatedSession.ExpiresAt
 	}
 
+	emailVerified := false
+
+	if row.EmailVerified != 0 {
+		emailVerified = true
+	}
+
 	user := &model.User{
-		Id:       row.UserID,
-		Username: row.Username,
+		Id:            row.UserID,
+		Email:         row.Email,
+		EmailVerified: emailVerified,
 	}
 
 	return session, user, nil
@@ -222,7 +237,7 @@ func (as *Service) GetSessionFrom(r *http.Request) (*model.Session, error) {
 
 // GetSessionUserFrom extracts the user from the request context
 func GetSessionUserFrom(ctx context.Context) (*model.User, bool) {
-	user, ok := ctx.Value(userContextKey).(*model.User)
+	user, ok := ctx.Value(UserContextKey).(*model.User)
 	return user, ok
 }
 
@@ -241,12 +256,19 @@ func (as *Service) ProtectedRouteMiddleware(h http.Handler) http.HandlerFunc {
 		token := GetTokenFromCookie(r)
 		if token != "" {
 			session, user, err := as.ValidateSession(r.Context(), token)
+
 			if err == nil {
 				// Store session info in context
-				ctx := context.WithValue(r.Context(), userContextKey, user)
+				ctx := context.WithValue(r.Context(), UserContextKey, user)
 				r = r.WithContext(ctx)
 				// Update cookie if session was renewed
 				SetSessionCookie(w, token, session.ExpiresAt)
+
+				// Redirect to email verification if email is not verified
+				if !user.EmailVerified {
+					http.Redirect(w, r, "/verify-email", http.StatusFound)
+					return
+				}
 			} else if err == ErrSessionExpired || err == ErrSessionInvalid {
 				DeleteSessionCookie(w)
 			}
@@ -259,9 +281,9 @@ func (as *Service) ProtectedRouteMiddleware(h http.Handler) http.HandlerFunc {
 	})
 }
 
-// GetUserByUsername retrieves a user by username
-func (as *Service) GetUserByUsername(ctx context.Context, username string) (db.User, error) {
-	row, err := as.Queries.GetUserByUsername(ctx, username)
+// GetUserByEmail retrieves a user byEmail
+func (as *Service) GetUserByEmail(ctx context.Context, email string) (db.User, error) {
+	row, err := as.Queries.GetUserByEmail(ctx, email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return row, fmt.Errorf("user not found: %w", err)
@@ -273,28 +295,105 @@ func (as *Service) GetUserByUsername(ctx context.Context, username string) (db.U
 	return row, nil
 }
 
-func (as *Service) CreateUser(ctx context.Context, username, password string) error {
+func (as *Service) CreateUser(ctx context.Context, email, password string) error {
+	// 1. Input validation
 	if password == "" || len(password) > 127 {
 		return fmt.Errorf("invalid password: %w", ErrWeakPassword)
 	}
 
+	if email == "" || !isValidEmail(email) {
+		return fmt.Errorf("invalid email: %w", ErrWeakPassword)
+	}
+
+	// 2. Password strength check
 	err := VerifyPasswordStrength(password)
 	if err != nil {
 		return fmt.Errorf("password does not meet requirements: %w", err)
 	}
 
+	// 3. Hash password
 	passwordHash, err := argon2id.Hash(password)
 	if err != nil {
 		return fmt.Errorf("error hashing password: %w", err)
 	}
 
-	_, err = as.Queries.CreateUser(ctx, db.CreateUserParams{
-		Username:     username,
+	// 4. Create user
+	user, err := as.Queries.CreateUser(ctx, db.CreateUserParams{
+		Email:        email,
 		PasswordHash: passwordHash,
 	})
 	if err != nil {
 		return fmt.Errorf("error creating user: %w", err)
 	}
 
+	code := as.generateCode()
+	slog.Info("Generated code", "code", code)
+
+	// 5. Store verification request
+	_, err = as.Queries.InsertUserEmailVerificationRequest(ctx, db.InsertUserEmailVerificationRequestParams{
+		UserID:    user.ID,
+		CreatedAt: time.Now().Unix(),
+		ExpiresAt: time.Now().Add(10 * time.Minute).Unix(),
+		Code:      code,
+	})
+	if err != nil {
+		return fmt.Errorf("error inserting email verification request: %w", err)
+	}
+
+	// 6. Send verification email asynchronously
+	go func() {
+		_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		err := as.SendVerificationEmail(email, code)
+		if err != nil {
+			slog.Error(
+				"failed to send verification email",
+				"error",
+				err,
+				"userId",
+				user.ID,
+			)
+		}
+	}()
+
+	return nil
+}
+
+func (as *Service) generateCode() string {
+	if as.Config.Env == "test" {
+		return "TEST"
+	}
+
+	bytes := make([]byte, 5)
+	if _, err := rand.Read(bytes); err != nil {
+		return ""
+	}
+	// Using base32 encoding for better entropy density excluding padding. eg. "C4W5E"
+	code := base32.NewEncoding("ABCDEFGHIJKLMNOPQRSTUVWXYZ234567").WithPadding(base32.NoPadding).EncodeToString(bytes)
+	return code
+}
+
+func isValidEmail(email string) bool {
+	emailRegex := regexp.MustCompile("^.+@.+\\..+$")
+	return emailRegex.MatchString(email)
+}
+
+func (as *Service) GetUserEmailVerificationRequest(ctx context.Context, user *model.User) (db.EmailVerificationRequest, error) {
+	verificationRequest, err := as.Queries.GetUserEmailVerificationRequest(ctx, user.Id)
+	if err != nil {
+		slog.Error("failed to verify email", "error", err)
+		return verificationRequest, fmt.Errorf("failed to verify email: %w", err)
+	}
+	return verificationRequest, err
+
+}
+
+func (as *Service) SetUserEmailVerified(ctx context.Context, userId int64) error {
+	err := as.Queries.SetUserEmailVerified(ctx, userId)
+	if err != nil {
+		slog.Error("failed to verify email", "error", err)
+		return fmt.Errorf("failed to verify email: %w", err)
+	}
 	return nil
 }

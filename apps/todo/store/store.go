@@ -1,4 +1,4 @@
-package queries
+package store
 
 import (
 	"context"
@@ -12,6 +12,8 @@ import (
 //go:embed schema.sql
 var ddl string
 
+// Init creates a new in-memory SQLite database and runs the schema.sql file to create the tables
+// It returns a new db.Queries instance connected to the in-memory database
 func Init() (*db.Queries, error) {
 	ctx := context.Background()
 	sqlite, err := sql.Open("sqlite3", ":memory:")

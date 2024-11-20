@@ -2,7 +2,9 @@ package todo_test
 
 import (
 	"context"
-	"golang-template-htmx-alpine/apps/todo/queries"
+	"golang-template-htmx-alpine/apps/todo/gen/db"
+	"golang-template-htmx-alpine/apps/todo/model"
+	"golang-template-htmx-alpine/apps/todo/store"
 	"golang-template-htmx-alpine/apps/todo/todo"
 	"net/http"
 	"net/http/httptest"
@@ -10,10 +12,13 @@ import (
 )
 
 func TestCreateFromForm(t *testing.T) {
-	fakeQuerier := queries.NewFakeQuerier()
-	ts := todo.Init(fakeQuerier)
-
 	ctx := context.Background()
+	fakeQuerier := store.NewFakeQuerier()
+	ts := todo.Init(fakeQuerier)
+	user, err := fakeQuerier.CreateUser(ctx, db.CreateUserParams{
+		Email:        "testuser",
+		PasswordHash: "testpassword",
+	})
 
 	// Create a new HTTP request with form data
 	req := httptest.NewRequest(http.MethodPost, "/todos", nil)
@@ -23,10 +28,13 @@ func TestCreateFromForm(t *testing.T) {
 	}
 
 	// Call FromRequest to create a Todo model from the request
-	todoModel := ts.From(req)
+	todoModel := model.Todo{
+		Name:        "Test Todo",
+		Description: "This is a test todo",
+	}
 
 	// Call CreateFromForm
-	createdTodo, err := ts.CreateFromForm(ctx, todoModel)
+	createdTodo, err := ts.CreateFromForm(ctx, todoModel, user.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}
@@ -37,6 +45,10 @@ func TestCreateFromForm(t *testing.T) {
 	}
 	if createdTodo.Description != "This is a test todo" {
 		t.Fatalf("expected todo description to be 'This is a test todo', got %s", createdTodo.Description)
+	}
+
+	if createdTodo.UserId != user.ID {
+		t.Fatalf("expected todo user ID to be %d, got %d", user.ID, createdTodo.UserId)
 	}
 
 	// Check if the todo exists in the fake querier

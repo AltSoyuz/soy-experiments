@@ -4,3 +4,4 @@ bin
 todos.db
 .vscode
 .idea
+config.yml

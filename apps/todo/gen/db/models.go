@@ -8,20 +8,47 @@ import (
 	"database/sql"
 )
 
+type EmailVerificationRequest struct {
+	UserID    int64
+	CreatedAt int64
+	ExpiresAt int64
+	Code      string
+}
+
+type OauthAccount struct {
+	UserID         string
+	Provider       string
+	ProviderUserID string
+	CreatedAt      sql.NullString
+}
+
+type PasswordResetRequest struct {
+	ID        int64
+	UserID    string
+	CreatedAt sql.NullString
+	ExpiresAt int64
+	CodeHash  string
+}
+
 type Session struct {
 	ID        string
 	UserID    int64
 	ExpiresAt int64
+	CreatedAt sql.NullString
 }
 
 type Todo struct {
 	ID          int64
+	UserID      int64
 	Name        string
 	Description sql.NullString
 }
 
 type User struct {
-	ID           int64
-	Username     string
-	PasswordHash string
+	ID            int64
+	Email         string
+	PasswordHash  string
+	EmailVerified int64
+	CreatedAt     sql.NullString
+	UpdatedAt     sql.NullString
 }

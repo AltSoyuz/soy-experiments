@@ -11,7 +11,7 @@ import (
 )
 
 const createSession = `-- name: CreateSession :one
-INSERT INTO session (id, user_id, expires_at) VALUES (?, ?, ?) RETURNING id, user_id, expires_at
+INSERT INTO session (id, user_id, expires_at) VALUES (?, ?, ?) RETURNING id, user_id, expires_at, created_at
 `
 
 type CreateSessionParams struct {
@@ -23,39 +23,57 @@ type CreateSessionParams struct {
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
 	row := q.db.QueryRowContext(ctx, createSession, arg.ID, arg.UserID, arg.ExpiresAt)
 	var i Session
-	err := row.Scan(&i.ID, &i.UserID, &i.ExpiresAt)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
 const createTodo = `-- name: CreateTodo :one
-INSERT INTO todos (name, description) VALUES (?, ?) RETURNING id, name, description
+INSERT INTO todos (name, user_id, description) VALUES (?, ?, ?) RETURNING id, user_id, name, description
 `
 
 type CreateTodoParams struct {
 	Name        string
+	UserID      int64
 	Description sql.NullString
 }
 
 func (q *Queries) CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, error) {
-	row := q.db.QueryRowContext(ctx, createTodo, arg.Name, arg.Description)
+	row := q.db.QueryRowContext(ctx, createTodo, arg.Name, arg.UserID, arg.Description)
 	var i Todo
-	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Description,
+	)
 	return i, err
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO user (username, password_hash) VALUES (?, ?) RETURNING id, username, password_hash
+INSERT INTO user (email, password_hash) VALUES (?, ?) RETURNING id, email, password_hash, email_verified, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Username     string
+	Email        string
 	PasswordHash string
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
-	row := q.db.QueryRowContext(ctx, createUser, arg.Username, arg.PasswordHash)
+	row := q.db.QueryRowContext(ctx, createUser, arg.Email, arg.PasswordHash)
 	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.EmailVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
@@ -69,31 +87,55 @@ func (q *Queries) DeleteSession(ctx context.Context, id string) error {
 }
 
 const deleteTodo = `-- name: DeleteTodo :exec
-DELETE FROM todos WHERE id = ?
+DELETE FROM todos WHERE id = ? AND user_id = ?
 `
 
-func (q *Queries) DeleteTodo(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteTodo, id)
+type DeleteTodoParams struct {
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) DeleteTodo(ctx context.Context, arg DeleteTodoParams) error {
+	_, err := q.db.ExecContext(ctx, deleteTodo, arg.ID, arg.UserID)
+	return err
+}
+
+const deleteUserEmailVerificationRequest = `-- name: DeleteUserEmailVerificationRequest :exec
+DELETE FROM email_verification_request WHERE user_id = ?
+`
+
+func (q *Queries) DeleteUserEmailVerificationRequest(ctx context.Context, userID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteUserEmailVerificationRequest, userID)
 	return err
 }
 
 const getTodo = `-- name: GetTodo :one
-SELECT id, name, description FROM todos WHERE id = ?
+SELECT id, user_id, name, description FROM todos WHERE id = ? AND user_id = ?
 `
 
-func (q *Queries) GetTodo(ctx context.Context, id int64) (Todo, error) {
-	row := q.db.QueryRowContext(ctx, getTodo, id)
+type GetTodoParams struct {
+	ID     int64
+	UserID int64
+}
+
+func (q *Queries) GetTodo(ctx context.Context, arg GetTodoParams) (Todo, error) {
+	row := q.db.QueryRowContext(ctx, getTodo, arg.ID, arg.UserID)
 	var i Todo
-	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Description,
+	)
 	return i, err
 }
 
 const getTodos = `-- name: GetTodos :many
-SELECT id, name, description FROM todos
+SELECT id, user_id, name, description FROM todos WHERE user_id = ?
 `
 
-func (q *Queries) GetTodos(ctx context.Context) ([]Todo, error) {
-	rows, err := q.db.QueryContext(ctx, getTodos)
+func (q *Queries) GetTodos(ctx context.Context, userID int64) ([]Todo, error) {
+	rows, err := q.db.QueryContext(ctx, getTodos, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +143,12 @@ func (q *Queries) GetTodos(ctx context.Context) ([]Todo, error) {
 	var items []Todo
 	for rows.Next() {
 		var i Todo
-		if err := rows.Scan(&i.ID, &i.Name, &i.Description); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Name,
+			&i.Description,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -115,19 +162,82 @@ func (q *Queries) GetTodos(ctx context.Context) ([]Todo, error) {
 	return items, nil
 }
 
-const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password_hash FROM user WHERE username = ?
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, password_hash, email_verified, created_at, updated_at FROM user WHERE email = ?
 `
 
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
 	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.PasswordHash,
+		&i.EmailVerified,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
 	return i, err
 }
 
+const getUserEmailVerificationRequest = `-- name: GetUserEmailVerificationRequest :one
+SELECT user_id, created_at, expires_at, code FROM email_verification_request WHERE user_id = ?
+`
+
+func (q *Queries) GetUserEmailVerificationRequest(ctx context.Context, userID int64) (EmailVerificationRequest, error) {
+	row := q.db.QueryRowContext(ctx, getUserEmailVerificationRequest, userID)
+	var i EmailVerificationRequest
+	err := row.Scan(
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Code,
+	)
+	return i, err
+}
+
+const insertUserEmailVerificationRequest = `-- name: InsertUserEmailVerificationRequest :one
+INSERT INTO email_verification_request (user_id, created_at, expires_at, code) 
+VALUES (?, ?, ?, ?)
+ON CONFLICT(user_id) DO UPDATE SET created_at = EXCLUDED.created_at, expires_at = EXCLUDED.expires_at, code = EXCLUDED.code
+RETURNING user_id, created_at, expires_at, code
+`
+
+type InsertUserEmailVerificationRequestParams struct {
+	UserID    int64
+	CreatedAt int64
+	ExpiresAt int64
+	Code      string
+}
+
+func (q *Queries) InsertUserEmailVerificationRequest(ctx context.Context, arg InsertUserEmailVerificationRequestParams) (EmailVerificationRequest, error) {
+	row := q.db.QueryRowContext(ctx, insertUserEmailVerificationRequest,
+		arg.UserID,
+		arg.CreatedAt,
+		arg.ExpiresAt,
+		arg.Code,
+	)
+	var i EmailVerificationRequest
+	err := row.Scan(
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Code,
+	)
+	return i, err
+}
+
+const setUserEmailVerified = `-- name: SetUserEmailVerified :exec
+UPDATE user SET email_verified = 1 WHERE id = ?
+`
+
+func (q *Queries) SetUserEmailVerified(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, setUserEmailVerified, id)
+	return err
+}
+
 const updateSession = `-- name: UpdateSession :one
-UPDATE session SET expires_at = ? WHERE id = ? RETURNING id, user_id, expires_at
+UPDATE session SET expires_at = ? WHERE id = ? RETURNING id, user_id, expires_at, created_at
 `
 
 type UpdateSessionParams struct {
@@ -138,29 +248,67 @@ type UpdateSessionParams struct {
 func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (Session, error) {
 	row := q.db.QueryRowContext(ctx, updateSession, arg.ExpiresAt, arg.ID)
 	var i Session
-	err := row.Scan(&i.ID, &i.UserID, &i.ExpiresAt)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ExpiresAt,
+		&i.CreatedAt,
+	)
 	return i, err
 }
 
 const updateTodo = `-- name: UpdateTodo :one
-UPDATE todos SET name = ?, description = ? WHERE id = ? RETURNING id, name, description
+UPDATE todos SET name = ?, description = ? WHERE id = ? AND user_id = ? RETURNING id, user_id, name, description
 `
 
 type UpdateTodoParams struct {
 	Name        string
 	Description sql.NullString
 	ID          int64
+	UserID      int64
 }
 
 func (q *Queries) UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, error) {
-	row := q.db.QueryRowContext(ctx, updateTodo, arg.Name, arg.Description, arg.ID)
+	row := q.db.QueryRowContext(ctx, updateTodo,
+		arg.Name,
+		arg.Description,
+		arg.ID,
+		arg.UserID,
+	)
 	var i Todo
-	err := row.Scan(&i.ID, &i.Name, &i.Description)
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Name,
+		&i.Description,
+	)
+	return i, err
+}
+
+const validateEmailVerificationRequest = `-- name: ValidateEmailVerificationRequest :one
+DELETE FROM email_verification_request WHERE user_id = ? AND code = ? AND expires_at > ? RETURNING user_id, created_at, expires_at, code
+`
+
+type ValidateEmailVerificationRequestParams struct {
+	UserID    int64
+	Code      string
+	ExpiresAt int64
+}
+
+func (q *Queries) ValidateEmailVerificationRequest(ctx context.Context, arg ValidateEmailVerificationRequestParams) (EmailVerificationRequest, error) {
+	row := q.db.QueryRowContext(ctx, validateEmailVerificationRequest, arg.UserID, arg.Code, arg.ExpiresAt)
+	var i EmailVerificationRequest
+	err := row.Scan(
+		&i.UserID,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Code,
+	)
 	return i, err
 }
 
 const validateSessionToken = `-- name: ValidateSessionToken :one
-SELECT s.id, s.user_id as session_user_id, s.expires_at, u.id AS user_id, u.username 
+SELECT s.id, s.user_id as user_id, s.expires_at, u.email, u.email_verified
 FROM session s 
 INNER JOIN user u ON u.id = s.user_id 
 WHERE s.id = ?
@@ -168,10 +316,10 @@ WHERE s.id = ?
 
 type ValidateSessionTokenRow struct {
 	ID            string
-	SessionUserID int64
-	ExpiresAt     int64
 	UserID        int64
-	Username      string
+	ExpiresAt     int64
+	Email         string
+	EmailVerified int64
 }
 
 func (q *Queries) ValidateSessionToken(ctx context.Context, id string) (ValidateSessionTokenRow, error) {
@@ -179,10 +327,10 @@ func (q *Queries) ValidateSessionToken(ctx context.Context, id string) (Validate
 	var i ValidateSessionTokenRow
 	err := row.Scan(
 		&i.ID,
-		&i.SessionUserID,
-		&i.ExpiresAt,
 		&i.UserID,
-		&i.Username,
+		&i.ExpiresAt,
+		&i.Email,
+		&i.EmailVerified,
 	)
 	return i, err
 }

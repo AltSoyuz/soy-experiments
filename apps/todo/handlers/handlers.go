@@ -2,20 +2,23 @@ package handlers
 
 import (
 	"golang-template-htmx-alpine/apps/todo/auth"
+	"golang-template-htmx-alpine/apps/todo/config"
 	"golang-template-htmx-alpine/apps/todo/todo"
-	"golang-template-htmx-alpine/apps/todo/views"
+	"golang-template-htmx-alpine/apps/todo/web"
 	"net/http"
 )
 
 func AddRoutes(
+	config *config.Config,
 	mux *http.ServeMux,
-	render views.RenderFunc,
+	render web.RenderFunc,
 	authService *auth.Service,
 	todoStore *todo.TodoStore,
 ) {
 	// Middlewares
 	limitRegister := authService.LimitRegisterMiddleware
 	limitLogin := authService.LimitLoginMiddleware
+	limitVerifyEmail := authService.LimitVerifyEmailMiddleware
 	protect := authService.ProtectedRouteMiddleware
 
 	// Health check
@@ -25,8 +28,15 @@ func AddRoutes(
 	mux.Handle("POST /users", limitRegister(handleCreateUser(render, authService)))
 	mux.Handle("GET /login", handleRenderLoginView(render))
 	mux.Handle("GET /register", handleRenderRegisterView(render))
-	mux.Handle("POST /authenticate/password", limitLogin(handleAuthWithPassword(render, authService)))
+	mux.Handle("POST /authenticate/password",
+		limitLogin(handleAuthWithPassword(render, authService)),
+	)
 	mux.Handle("GET /logout", handleLogout(authService))
+	mux.Handle("GET /verify-email", limitVerifyEmail(handleRenderVerifyEmail(render)))
+	mux.HandleFunc(
+		"POST /email-verification-request",
+		(limitVerifyEmail(handleEmailVerificationRequest(authService, render))),
+	)
 
 	// Todos
 	mux.Handle("GET /", protect(handleRenderTodoList(render, todoStore)))
@@ -39,8 +49,6 @@ func AddRoutes(
 	// mux.HandleFunc("DELETE /users/{id}",
 	// mux.HandleFunc("POST /users/{id}/update-password",
 
-	// mux.HandleFunc("POST /users/{id}/email-verification-request",
-	// mux.HandleFunc("GET /users/{id}/email-verification-request",
 	// mux.HandleFunc("DELETE /users/{id}/email-verification-request",
 	// mux.HandleFunc("POST /users/{id}/very-email",
 }

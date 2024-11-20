@@ -4,13 +4,24 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"golang-template-htmx-alpine/apps/todo/config"
 	"golang-template-htmx-alpine/apps/todo/model"
-	"golang-template-htmx-alpine/apps/todo/queries"
+	"golang-template-htmx-alpine/apps/todo/store"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 )
+
+func givenTestConfig() *config.Config {
+	c := &config.Config{
+		SMTPHost:    "smtp.example.com",
+		SMTPPort:    587,
+		SenderEmail: "sender@example.com",
+		SenderPass:  "password",
+	}
+	return c
+}
 
 func TestVerifyPasswordStrength(t *testing.T) {
 	f := func(password string, expect error) {
@@ -48,8 +59,9 @@ func TestHashToken(t *testing.T) {
 }
 
 func TestCreateSession(t *testing.T) {
-	fakeQuerier := queries.NewFakeQuerier()
-	as := Init(fakeQuerier)
+	c := givenTestConfig()
+	fakeQuerier := store.NewFakeQuerier()
+	as := Init(c, fakeQuerier)
 
 	ctx := context.Background()
 	userId := int64(123)
@@ -79,8 +91,9 @@ func TestCreateSession(t *testing.T) {
 }
 
 func TestValidateSession(t *testing.T) {
-	fakeQuerier := queries.NewFakeQuerier()
-	as := Init(fakeQuerier)
+	c := givenTestConfig()
+	fakeQuerier := store.NewFakeQuerier()
+	as := Init(c, fakeQuerier)
 
 	ctx := context.Background()
 	userId := int64(123)
@@ -259,8 +272,9 @@ func TestGetSessionFrom(t *testing.T) {
 	f(req, expectedToken)
 }
 func TestInvalidateSession(t *testing.T) {
-	fakeQuerier := queries.NewFakeQuerier()
-	as := Init(fakeQuerier)
+	c := givenTestConfig()
+	fakeQuerier := store.NewFakeQuerier()
+	as := Init(c, fakeQuerier)
 
 	ctx := context.Background()
 	userId := int64(123)
@@ -286,9 +300,9 @@ func TestInvalidateSession(t *testing.T) {
 }
 func TestGetSessionUserFrom(t *testing.T) {
 	// Create a context with a valid session
-	user := &model.User{Id: 123, Username: "testuser"}
+	user := &model.User{Id: 123, Email: "testuser"}
 
-	ctx := context.WithValue(context.Background(), userContextKey, user)
+	ctx := context.WithValue(context.Background(), UserContextKey, user)
 
 	// Test with valid session in context
 	retrievedUser, ok := GetSessionUserFrom(ctx)
@@ -299,8 +313,8 @@ func TestGetSessionUserFrom(t *testing.T) {
 		t.Fatalf("expected user ID %d, got %d", user.Id, retrievedUser.Id)
 	}
 
-	if retrievedUser.Username != "testuser" {
-		t.Fatalf("expected username %s, got %s", "testuser", retrievedUser.Username)
+	if retrievedUser.Email != "testuser" {
+		t.Fatalf("expected Email %s, got %s", "testuser", retrievedUser.Email)
 	}
 
 	// Test with no session in context
@@ -314,35 +328,58 @@ func TestGetSessionUserFrom(t *testing.T) {
 	}
 }
 func TestCreateUser(t *testing.T) {
-	fakeQuerier := queries.NewFakeQuerier()
-	as := Init(fakeQuerier)
+	c := givenTestConfig()
+	fakeQuerier := store.NewFakeQuerier()
+	as := Init(c, fakeQuerier)
 
-	f := func(username, password string, expect error) {
+	f := func(email, password string, expect error) {
 		t.Helper()
 
 		ctx := context.Background()
-		err := as.CreateUser(ctx, username, password)
+		err := as.CreateUser(ctx, email, password)
 		if !errors.Is(err, expect) {
 			t.Fatalf("unexpected error; got %v; want %v", err, expect)
 		}
 
 		if expect == nil {
-			user, err := fakeQuerier.GetUserByUsername(ctx, username)
+			user, err := fakeQuerier.GetUserByEmail(ctx, email)
 			if err != nil {
 				t.Fatalf("expected user to be created")
 			}
 
-			if user.Username != username {
-				t.Fatalf("expected username %s, got %s", username, user.Username)
+			if user.Email != email {
+				t.Fatalf("expected email %s, got %s", email, user.Email)
 			}
 
 			if user.PasswordHash == "" {
 				t.Fatalf("expected password hash to be set")
 			}
+
+			if fakeQuerier.EmailVerificationRequests[user.ID].UserID != user.ID {
+				t.Fatalf("expected email verification request to be created")
+			}
+
+			if fakeQuerier.EmailVerificationRequests[user.ID].Code == "" {
+				t.Fatalf("expected email verification code to be set")
+			}
 		}
 	}
 
-	f("user1", "", ErrWeakPassword)
-	f("user2", "short", ErrWeakPassword)
-	f("user3", "validpassword123", nil)
+	f("user1@user.com", "", ErrWeakPassword)
+	f("user2@user.com", "short", ErrWeakPassword)
+	f("user3@user.com", "validpassword123", nil)
+}
+
+func TestGenerateCode(t *testing.T) {
+	as := &Service{Config: &config.Config{Env: "test"}}
+	code := as.generateCode()
+	if code != "TEST" {
+		t.Fatalf("expected TEST, got %s", code)
+	}
+
+	as.Config.Env = "production"
+	code = as.generateCode()
+	if len(code) != 8 {
+		t.Fatalf("expected code length 8, got %d", len(code))
+	}
 }

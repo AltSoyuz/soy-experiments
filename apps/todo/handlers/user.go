@@ -2,13 +2,13 @@ package handlers
 
 import (
 	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/views"
+	"golang-template-htmx-alpine/apps/todo/web"
 	"log/slog"
 	"net/http"
 )
 
 // handleCreateUser creates a new user account and redirects to the login page.
-func handleCreateUser(render views.RenderFunc, authService *auth.Service) http.HandlerFunc {
+func handleCreateUser(render web.RenderFunc, authService *auth.Service) http.HandlerFunc {
 	type ErrorFragmentData struct {
 		Message string
 	}
@@ -22,7 +22,7 @@ func handleCreateUser(render views.RenderFunc, authService *auth.Service) http.H
 			slog.Error("error parsing form", "error", err)
 			return RegisterForm{}, err
 		}
-		username := r.FormValue("username")
+		username := r.FormValue("email")
 		password := r.FormValue("password")
 
 		return RegisterForm{Username: username, Password: password}, nil
@@ -32,7 +32,6 @@ func handleCreateUser(render views.RenderFunc, authService *auth.Service) http.H
 		form, err := getRegisterForm(r)
 		if err != nil {
 			slog.Error("error getting register form", "error", err)
-			w.WriteHeader(http.StatusBadRequest)
 			render(w, ErrorFragmentData{Message: "Invalid form data"}, "error-msg")
 			return
 		}
@@ -41,7 +40,6 @@ func handleCreateUser(render views.RenderFunc, authService *auth.Service) http.H
 
 		if err != nil {
 			slog.Error("error creating user", "error", err)
-			w.WriteHeader(http.StatusBadRequest)
 			render(w, ErrorFragmentData{Message: "Password does not meet requirements"}, "error-msg")
 			return
 		}

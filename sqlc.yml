@@ -1,8 +1,8 @@
 version: "2"
 sql:
   - engine: "sqlite"
-    queries: "apps/todo/queries/queries.sql"
-    schema: "apps/todo/queries/schema.sql"
+    queries: "apps/todo/store/queries.sql"
+    schema: "apps/todo/store/schema.sql"
     gen:
       go:
         out: "apps/todo/gen/db"

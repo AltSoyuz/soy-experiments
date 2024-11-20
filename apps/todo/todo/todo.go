@@ -6,7 +6,6 @@ import (
 	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"golang-template-htmx-alpine/apps/todo/model"
 	"log/slog"
-	"net/http"
 )
 
 type TodoStore struct {
@@ -19,8 +18,8 @@ func Init(queries db.Querier) *TodoStore {
 	}
 }
 
-func (s *TodoStore) List(ctx context.Context) ([]model.Todo, error) {
-	todos, err := s.queries.GetTodos(ctx)
+func (s *TodoStore) List(ctx context.Context, userId int64) ([]model.Todo, error) {
+	todos, err := s.queries.GetTodos(ctx, userId)
 	if err != nil {
 		slog.Error("error fetching todos", "error", err)
 		return nil, err
@@ -38,15 +37,9 @@ func (s *TodoStore) List(ctx context.Context) ([]model.Todo, error) {
 	return list, nil
 }
 
-func (s *TodoStore) From(r *http.Request) model.Todo {
-	return model.Todo{
-		Name:        r.FormValue("name"),
-		Description: r.FormValue("description"),
-	}
-}
-
-func (s *TodoStore) CreateFromForm(ctx context.Context, t model.Todo) (model.Todo, error) {
+func (s *TodoStore) CreateFromForm(ctx context.Context, t model.Todo, userId int64) (model.Todo, error) {
 	todo, err := s.queries.CreateTodo(ctx, db.CreateTodoParams{
+		UserID:      userId,
 		Name:        t.Name,
 		Description: sql.NullString{String: t.Description, Valid: true},
 	})
@@ -60,11 +53,15 @@ func (s *TodoStore) CreateFromForm(ctx context.Context, t model.Todo) (model.Tod
 		Id:          todo.ID,
 		Name:        todo.Name,
 		Description: todo.Description.String,
+		UserId:      userId,
 	}, nil
 }
 
-func (s *TodoStore) FindById(ctx context.Context, id int64) (model.Todo, error) {
-	todo, err := s.queries.GetTodo(ctx, id)
+func (s *TodoStore) FindById(ctx context.Context, id, userId int64) (model.Todo, error) {
+	todo, err := s.queries.GetTodo(ctx, db.GetTodoParams{
+		ID:     id,
+		UserID: userId,
+	})
 	if err != nil {
 		slog.Error("error fetching todo", "error", err)
 		return model.Todo{}, err
@@ -73,12 +70,16 @@ func (s *TodoStore) FindById(ctx context.Context, id int64) (model.Todo, error) 
 	return model.Todo{
 		Id:          todo.ID,
 		Name:        todo.Name,
+		UserId:      todo.UserID,
 		Description: todo.Description.String,
 	}, nil
 }
 
-func (s *TodoStore) DeleteById(ctx context.Context, id int64) error {
-	if err := s.queries.DeleteTodo(ctx, id); err != nil {
+func (s *TodoStore) Delete(ctx context.Context, id, userId int64) error {
+	if err := s.queries.DeleteTodo(ctx, db.DeleteTodoParams{
+		ID:     id,
+		UserID: userId,
+	}); err != nil {
 		slog.Error("error deleting todo", "error", err)
 		return err
 	}
@@ -89,6 +90,7 @@ func (s *TodoStore) DeleteById(ctx context.Context, id int64) error {
 func (s *TodoStore) Create(ctx context.Context, todo model.Todo) error {
 	if _, err := s.queries.CreateTodo(ctx, db.CreateTodoParams{
 		Name:        todo.Name,
+		UserID:      todo.UserId,
 		Description: sql.NullString{String: todo.Description, Valid: true},
 	}); err != nil {
 		slog.Error("error creating todo", "error", err)
@@ -98,9 +100,10 @@ func (s *TodoStore) Create(ctx context.Context, todo model.Todo) error {
 	return nil
 }
 
-func (s *TodoStore) UpdateById(ctx context.Context, id int64, todo model.Todo) (model.Todo, error) {
+func (s *TodoStore) Update(ctx context.Context, todo model.Todo) (model.Todo, error) {
 	t, err := s.queries.UpdateTodo(ctx, db.UpdateTodoParams{
-		ID:          id,
+		ID:          todo.Id,
+		UserID:      todo.UserId,
 		Name:        todo.Name,
 		Description: sql.NullString{String: todo.Description, Valid: true},
 	})
@@ -113,5 +116,6 @@ func (s *TodoStore) UpdateById(ctx context.Context, id int64, todo model.Todo) (
 	return model.Todo{
 		Name:        t.Name,
 		Description: t.Description.String,
+		UserId:      t.UserID,
 	}, nil
 }
