@@ -3,9 +3,9 @@ package todo_test
 import (
 	"context"
 	"golang-template-htmx-alpine/apps/todo/gen/db"
-	"golang-template-htmx-alpine/apps/todo/model"
 	"golang-template-htmx-alpine/apps/todo/store"
 	"golang-template-htmx-alpine/apps/todo/todo"
+	"golang-template-htmx-alpine/apps/todo/web/forms"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -20,6 +20,10 @@ func TestCreateFromForm(t *testing.T) {
 		PasswordHash: "testpassword",
 	})
 
+	if err != nil {
+		t.Fatalf("expected no error, got: %v", err)
+	}
+
 	// Create a new HTTP request with form data
 	req := httptest.NewRequest(http.MethodPost, "/todos", nil)
 	req.Form = map[string][]string{
@@ -27,14 +31,12 @@ func TestCreateFromForm(t *testing.T) {
 		"description": {"This is a test todo"},
 	}
 
-	// Call FromRequest to create a Todo model from the request
-	todoModel := model.Todo{
+	// Call CreateFromForm
+	createdTodo, err := ts.CreateFromForm(ctx, forms.TodoForm{
 		Name:        "Test Todo",
 		Description: "This is a test todo",
-	}
+	}, user.ID)
 
-	// Call CreateFromForm
-	createdTodo, err := ts.CreateFromForm(ctx, todoModel, user.ID)
 	if err != nil {
 		t.Fatalf("expected no error, got: %v", err)
 	}

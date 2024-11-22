@@ -11,7 +11,7 @@ import (
 func AddRoutes(
 	config *config.Config,
 	mux *http.ServeMux,
-	render web.RenderFunc,
+	renderer *web.Renderer,
 	authService *auth.Service,
 	todoStore *todo.TodoStore,
 ) {
@@ -22,27 +22,27 @@ func AddRoutes(
 	protect := authService.ProtectedRouteMiddleware
 
 	// Health check
-	mux.HandleFunc("GET /health", Healthz)
+	mux.HandleFunc("GET /healthz", healthz)
 
-	// Authentication
-	mux.Handle("POST /users", limitRegister(handleCreateUser(render, authService)))
-	mux.Handle("GET /login", handleRenderLoginView(render))
-	mux.Handle("GET /register", handleRenderRegisterView(render))
+	// Auth
+	mux.Handle("POST /users", limitRegister(handleCreateUser(renderer, authService)))
+	mux.Handle("GET /login", handleRenderLoginView(renderer))
+	mux.Handle("GET /register", handleRenderRegisterView(renderer))
 	mux.Handle("POST /authenticate/password",
-		limitLogin(handleAuthWithPassword(render, authService)),
+		limitLogin(handleAuthWithPassword(renderer, authService)),
 	)
 	mux.Handle("GET /logout", handleLogout(authService))
-	mux.Handle("GET /verify-email", limitVerifyEmail(handleRenderVerifyEmail(render)))
-	mux.HandleFunc(
+	mux.Handle("GET /verify-email", limitVerifyEmail(handleRenderVerifyEmail(renderer)))
+	mux.Handle(
 		"POST /email-verification-request",
-		(limitVerifyEmail(handleEmailVerificationRequest(authService, render))),
+		limitVerifyEmail(handleEmailVerification(renderer, authService)),
 	)
 
 	// Todos
-	mux.Handle("GET /", protect(handleRenderTodoList(render, todoStore)))
-	mux.Handle("POST /todos", protect(handleCreateTodoFragment(render, todoStore)))
-	mux.Handle("GET /todos/{id}/form", protect(handleGetTodoFormFragment(render, todoStore)))
-	mux.Handle("PUT /todos/{id}", protect(handleUpdateTodoFragment(render, todoStore)))
+	mux.Handle("GET /", protect(handleRenderTodoList(renderer, todoStore)))
+	mux.Handle("POST /todos", protect(handleCreateTodoFragment(renderer, todoStore)))
+	mux.Handle("GET /todos/{id}/form", protect(handleGetTodoFormFragment(renderer, todoStore)))
+	mux.Handle("PUT /todos/{id}", protect(handleUpdateTodoFragment(renderer, todoStore)))
 	mux.Handle("DELETE /todos/{id}", protect(handleDeleteTodo(todoStore)))
 
 	// mux.HandleFunc("GET /users/{id}",

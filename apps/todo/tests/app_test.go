@@ -59,7 +59,7 @@ func TestWeakPasswordRegistration(t *testing.T) {
 		"email="+randomEmail()+"&password=test",
 		false,
 	).assertStatus(http.StatusOK).
-		assertContains("Password does not meet requirements")
+		assertContains("password too weak or compromised")
 
 	checkServerErrors(t, errChan)
 }
@@ -96,17 +96,17 @@ func TestSuccessfulRegistrationAndLoginAndLogout(t *testing.T) {
 	server.sendRequest(
 		http.MethodPost,
 		"/email-verification-request",
-		"code=",
+		"code=23",
 		true,
 		resp.Cookies()...,
 	).assertStatus(http.StatusOK).
-		assertContains("Invalid verification code")
+		assertContains("invalid email verification cod")
 
 	// Verify email with valid code
 	server.sendRequest(
 		http.MethodPost,
 		"/email-verification-request",
-		"code="+"TEST",
+		"code="+"12345678",
 		true,
 		resp.Cookies()...,
 	).assertStatus(http.StatusNoContent).

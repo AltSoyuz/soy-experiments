@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"golang-template-htmx-alpine/apps/todo/model"
+	"golang-template-htmx-alpine/apps/todo/web/forms"
 	"log/slog"
 )
 
@@ -37,15 +38,14 @@ func (s *TodoStore) List(ctx context.Context, userId int64) ([]model.Todo, error
 	return list, nil
 }
 
-func (s *TodoStore) CreateFromForm(ctx context.Context, t model.Todo, userId int64) (model.Todo, error) {
+func (s *TodoStore) CreateFromForm(ctx context.Context, todoForm forms.TodoForm, userId int64) (model.Todo, error) {
 	todo, err := s.queries.CreateTodo(ctx, db.CreateTodoParams{
 		UserID:      userId,
-		Name:        t.Name,
-		Description: sql.NullString{String: t.Description, Valid: true},
+		Name:        todoForm.Name,
+		Description: sql.NullString{String: todoForm.Description, Valid: true},
 	})
 
 	if err != nil {
-		slog.Error("error creating todo", "error", err)
 		return model.Todo{}, err
 	}
 

@@ -7,19 +7,39 @@ import (
 	"log/slog"
 )
 
+type PageData struct {
+	Title string
+}
+
+type Renderer struct {
+	components *template.Template
+	pages      *template.Template
+}
+
 //go:embed components/* pages/*
 var embedded embed.FS
 
-func Init() (RenderFunc, error) {
-	tmpl, err := template.ParseFS(embedded, "pages/*.html", "components/*.html")
+func NewRender(components *template.Template, pages *template.Template) *Renderer {
+	return &Renderer{
+		components: components,
+		pages:      pages,
+	}
+}
+
+func Init() (*Renderer, error) {
+	componentTemplates, err := template.ParseFS(embedded, "components/*.html")
 	if err != nil {
 		return nil, err
 	}
-
-	initializeTemplates("pages", "page")
 	initializeTemplates("components", "component")
 
-	render := newRender(tmpl)
+	pageTemplates, err := template.ParseFS(embedded, "pages/*.html")
+	if err != nil {
+		return nil, err
+	}
+	initializeTemplates("pages", "page")
+
+	render := NewRender(componentTemplates, pageTemplates)
 
 	return render, nil
 }
@@ -37,18 +57,34 @@ func initializeTemplates(dir string, templateType string) {
 	}
 }
 
-type RenderFunc func(w io.Writer, data interface{}, name string)
-
-func newRender(tmpl *template.Template) RenderFunc {
-	return func(w io.Writer, data interface{}, name string) {
-		// check if template exists
-		if tmpl.Lookup(name) == nil {
-			slog.Error("template not found", "template", name)
-			return
-		}
-		err := tmpl.ExecuteTemplate(w, name, data)
-		if err != nil {
-			slog.Error("failed to execute template", "error", err, "template", name)
-		}
+func (r *Renderer) RenderPage(w io.Writer, data interface{}, name string) {
+	// check if template exists
+	if r.pages.Lookup(name) == nil {
+		slog.Error("template not found", "template", name)
+		return
 	}
+	err := r.pages.ExecuteTemplate(w, name, data)
+	if err != nil {
+		slog.Error("failed to execute template", "error", err, "template", name)
+	}
+}
+
+func (r *Renderer) RenderComponent(w io.Writer, data interface{}, name string) {
+	// check if template exists
+	if r.components.Lookup(name) == nil {
+		slog.Error("template not found", "template", name)
+		return
+	}
+	err := r.components.ExecuteTemplate(w, name, data)
+	if err != nil {
+		slog.Error("failed to execute template", "error", err, "template", name)
+	}
+}
+
+type ErrorFragmentData struct {
+	Message string
+}
+
+func (r *Renderer) ErrorFragment(w io.Writer, message string) {
+	r.RenderComponent(w, ErrorFragmentData{Message: message}, "error-msg")
 }

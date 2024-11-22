@@ -184,12 +184,7 @@ func (f *FakeQuerier) InsertUserEmailVerificationRequest(ctx context.Context, ar
 	if arg.UserID == 0 || arg.Code == "" {
 		return db.EmailVerificationRequest{}, errors.New("invalid email verification request parameters")
 	}
-	emailVerificationRequest := db.EmailVerificationRequest{
-		UserID:    arg.UserID,
-		CreatedAt: arg.CreatedAt,
-		ExpiresAt: arg.ExpiresAt,
-		Code:      arg.Code,
-	}
+	emailVerificationRequest := db.EmailVerificationRequest(arg)
 	f.EmailVerificationRequests[arg.UserID] = arg
 	return emailVerificationRequest, nil
 }
@@ -207,12 +202,7 @@ func (f *FakeQuerier) GetUserEmailVerificationRequest(ctx context.Context, userI
 	if !exists {
 		return db.EmailVerificationRequest{}, errors.New("email verification request not found")
 	}
-	return db.EmailVerificationRequest{
-		UserID:    emailVerificationRequest.UserID,
-		CreatedAt: emailVerificationRequest.CreatedAt,
-		ExpiresAt: emailVerificationRequest.ExpiresAt,
-		Code:      emailVerificationRequest.Code,
-	}, nil
+	return db.EmailVerificationRequest(emailVerificationRequest), nil
 }
 
 func (f *FakeQuerier) SetUserEmailVerified(ctx context.Context, userId int64) error {
@@ -236,11 +226,5 @@ func (f *FakeQuerier) ValidateEmailVerificationRequest(ctx context.Context, arg 
 	if emailVerificationRequest.ExpiresAt < time.Now().Unix() {
 		return db.EmailVerificationRequest{}, errors.New("email verification request expired")
 	}
-	return db.EmailVerificationRequest{
-		UserID:    emailVerificationRequest.UserID,
-		CreatedAt: emailVerificationRequest.CreatedAt,
-		ExpiresAt: emailVerificationRequest.ExpiresAt,
-		Code:      emailVerificationRequest.Code,
-	}, nil
-
+	return db.EmailVerificationRequest(emailVerificationRequest), nil
 }

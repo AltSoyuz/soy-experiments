@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func Healthz(w http.ResponseWriter, r *http.Request) {
+func healthz(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	slog.Info("health check")
 	_, err := w.Write([]byte("OK"))

@@ -3,44 +3,26 @@ package handlers
 import (
 	"golang-template-htmx-alpine/apps/todo/auth"
 	"golang-template-htmx-alpine/apps/todo/web"
+	"golang-template-htmx-alpine/apps/todo/web/forms"
 	"log/slog"
 	"net/http"
 )
 
 // handleCreateUser creates a new user account and redirects to the login page.
-func handleCreateUser(render web.RenderFunc, authService *auth.Service) http.HandlerFunc {
-	type ErrorFragmentData struct {
-		Message string
-	}
-	type RegisterForm struct {
-		Username string
-		Password string
-	}
-	getRegisterForm := func(r *http.Request) (RegisterForm, error) {
-		err := r.ParseForm()
+func handleCreateUser(renderer *web.Renderer, authService *auth.Service) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		form, err := forms.LoginFrom(r)
 		if err != nil {
 			slog.Error("error parsing form", "error", err)
-			return RegisterForm{}, err
-		}
-		username := r.FormValue("email")
-		password := r.FormValue("password")
-
-		return RegisterForm{Username: username, Password: password}, nil
-	}
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		form, err := getRegisterForm(r)
-		if err != nil {
-			slog.Error("error getting register form", "error", err)
-			render(w, ErrorFragmentData{Message: "Invalid form data"}, "error-msg")
+			renderer.ErrorFragment(w, "error parsing form")
 			return
 		}
 
-		err = authService.CreateUser(r.Context(), form.Username, form.Password)
+		err = authService.RegisterUser(r.Context(), form.Email, form.Password)
 
 		if err != nil {
-			slog.Error("error creating user", "error", err)
-			render(w, ErrorFragmentData{Message: "Password does not meet requirements"}, "error-msg")
+			slog.Error("error registering user", "error", err)
+			renderer.ErrorFragment(w, err.Error())
 			return
 		}
 

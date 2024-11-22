@@ -44,27 +44,27 @@ func Run(ctx context.Context) error {
 	}
 
 	// Initialize the configuration
-	c, err := config.Init(configPath)
+	serverConfig, err := config.Init(configPath)
 	if err != nil {
 		return fmt.Errorf("error initializing config: %w", err)
 	}
 
-	tmpl, err := web.Init()
+	renderer, err := web.Init()
 	if err != nil {
 		return fmt.Errorf("error initializing templates: %w", err)
 	}
 
-	q, err := store.Init()
+	queries, err := store.Init()
 	if err != nil {
 		return fmt.Errorf("error initializing store: %w", err)
 	}
 
-	authService := auth.Init(c, q)
-	todoStore := todo.Init(q)
+	authService := auth.Init(serverConfig, queries)
+	todoStore := todo.Init(queries)
 
 	srv := New(
-		c,
-		tmpl,
+		serverConfig,
+		renderer,
 		authService,
 		todoStore,
 	)

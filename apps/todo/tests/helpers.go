@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"golang-template-htmx-alpine/apps/todo/auth"
 	"golang-template-htmx-alpine/apps/todo/server"
 	"golang-template-htmx-alpine/lib/httpserver"
 	"io"
@@ -76,7 +77,7 @@ func (s *testServer) givenNewAuthenticatedUser() *AuthenticatedUser {
 	s.sendRequest(
 		http.MethodPost,
 		"/email-verification-request",
-		"code="+"TEST",
+		"code="+auth.TestEmailVerificationCode,
 		true,
 		resp.Cookies()...,
 	).assertStatus(http.StatusNoContent).
@@ -172,7 +173,7 @@ func setupServer(t *testing.T, config TestConfig) (*testServer, chan error) {
 		errChan <- server.Run(ctx)
 	}()
 
-	if err := httpserver.WaitForReady(ctx, config.Timeout, config.BaseURL+"/health"); err != nil {
+	if err := httpserver.WaitForReady(ctx, config.Timeout, config.BaseURL+"/healthz"); err != nil {
 		t.Fatalf("server not ready: %v", err)
 	}
 

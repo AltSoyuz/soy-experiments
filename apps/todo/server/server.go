@@ -12,7 +12,7 @@ import (
 
 func New(
 	config *config.Config,
-	render web.RenderFunc,
+	render *web.Renderer,
 	authService *auth.Service,
 	todoStore *todo.TodoStore,
 ) http.Handler {

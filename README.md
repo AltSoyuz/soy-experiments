@@ -8,9 +8,11 @@ To install GOKISS, ensure you have Go installed on your system. You can download
 
 ## Resources
 
-**Structure:**
+
+**Structure & Language:**
 - [Structure](https://go.dev/doc/modules/layout)
 - [Writing Web Applications](https://golang.org/doc/articles/wiki/)
+- [Guidelines](https://google.github.io/styleguide/go/best-practices)
 
 **Logging:**
 - [Official](https://pkg.go.dev/log)

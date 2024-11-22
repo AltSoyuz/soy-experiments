@@ -21,7 +21,7 @@ func main() {
 	fileServer := http.FileServer(http.FS(distDir))
 
 	handler.Handle("/", http.StripPrefix("/", fileServer))
-	handler.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	handler.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("OK"))
 	})
