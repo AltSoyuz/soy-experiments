@@ -9,12 +9,12 @@ import (
 )
 
 // handleCreateUser creates a new user account and redirects to the login page.
-func handleCreateUser(renderer *web.Renderer, authService *auth.Service) http.HandlerFunc {
+func handleCreateUser(authService *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		form, err := forms.LoginFrom(r)
+		form, err := forms.RegisterFrom(r)
 		if err != nil {
 			slog.Error("error parsing form", "error", err)
-			renderer.ErrorFragment(w, "error parsing form")
+			web.RenderError(w, err.Error())
 			return
 		}
 
@@ -22,7 +22,7 @@ func handleCreateUser(renderer *web.Renderer, authService *auth.Service) http.Ha
 
 		if err != nil {
 			slog.Error("error registering user", "error", err)
-			renderer.ErrorFragment(w, err.Error())
+			web.RenderError(w, err.Error())
 			return
 		}
 

@@ -53,7 +53,11 @@ func (s *testServer) givenNewUser(email, password string) {
 	s.sendRequest(
 		http.MethodPost,
 		"/users",
-		"email="+email+"&password="+password,
+		"email="+
+			email+
+			"&password="+
+			password+
+			"&confirm-password="+password,
 		false,
 	).assertStatus(http.StatusNoContent).
 		assertRedirect("/login")

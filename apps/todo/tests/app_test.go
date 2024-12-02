@@ -20,7 +20,10 @@ func TestRegistrationRateLimit(t *testing.T) {
 		server.sendRequest(
 			http.MethodPost,
 			"/users",
-			"email="+randomEmail()+"&password=Str0ngP@ssw0rd!",
+			"email="+
+				randomEmail()+
+				"&password=Str0ngP@ssw0rd!"+
+				"&confirm-password=Str0ngP@ssw0rd!",
 			false,
 		).assertStatus(expectedStatus)
 	}
@@ -56,10 +59,10 @@ func TestWeakPasswordRegistration(t *testing.T) {
 	server.sendRequest(
 		http.MethodPost,
 		"/users",
-		"email="+randomEmail()+"&password=test",
+		"email="+randomEmail()+"&password=test"+"&confirm-password=test",
 		false,
 	).assertStatus(http.StatusOK).
-		assertContains("password too weak or compromised")
+		assertContains("Password too weak or compromised")
 
 	checkServerErrors(t, errChan)
 }
@@ -100,7 +103,7 @@ func TestSuccessfulRegistrationAndLoginAndLogout(t *testing.T) {
 		true,
 		resp.Cookies()...,
 	).assertStatus(http.StatusOK).
-		assertContains("invalid email verification cod")
+		assertContains("Invalid email verification code")
 
 	// Verify email with valid code
 	server.sendRequest(

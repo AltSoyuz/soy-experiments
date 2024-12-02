@@ -31,20 +31,20 @@ func handleLogout(as *auth.Service) http.HandlerFunc {
 	}
 }
 
-func handleAuthWithPassword(render *web.Renderer, authService *auth.Service) http.HandlerFunc {
+func handleAuthWithPassword(authService *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		form, err := forms.LoginFrom(r)
 		if err != nil {
 			slog.Error("error getting login form", "error", err)
-			render.ErrorFragment(w, "error getting login form")
+			web.RenderError(w, "error getting login form")
 			return
 		}
 
 		session, token, err := authService.AuthenticateWithPassword(ctx, form.Email, form.Password)
 		if err != nil {
 			slog.Error("error authenticating with password", "error", err)
-			render.ErrorFragment(w, "error authenticating with password")
+			web.RenderError(w, "error authenticating with password")
 			return
 		}
 
@@ -55,34 +55,25 @@ func handleAuthWithPassword(render *web.Renderer, authService *auth.Service) htt
 	}
 }
 
-func handleRenderRegisterView(render *web.Renderer) http.HandlerFunc {
-	type loginPageData struct {
-		Title string
-	}
+func handleRenderRegisterView() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		render.RenderPage(w, loginPageData{Title: "Register"}, "register.html")
+		web.RenderRegister(w)
 	}
 }
 
-func handleRenderLoginView(render *web.Renderer) http.HandlerFunc {
-	type loginPageData struct {
-		Title string
-	}
+func handleRenderLoginView() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		render.RenderPage(w, loginPageData{Title: "Login"}, "login.html")
+		web.RenderLogin(w)
 	}
 }
 
-func handleRenderVerifyEmail(render *web.Renderer) http.HandlerFunc {
-	type verifyEmailPageData struct {
-		Title string
-	}
+func handleRenderVerifyEmail() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		render.RenderPage(w, verifyEmailPageData{Title: "Verify Email"}, "verify-email.html")
+		web.RenderVerifyEmail(w)
 	}
 }
 
-func handleEmailVerification(render *web.Renderer, as *auth.Service) http.HandlerFunc {
+func handleEmailVerification(as *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		token := auth.GetTokenFromCookie(r)
@@ -90,14 +81,14 @@ func handleEmailVerification(render *web.Renderer, as *auth.Service) http.Handle
 		form, err := forms.CodeFrom(r)
 		if err != nil {
 			slog.Error("error getting verification form", "error", err)
-			render.ErrorFragment(w, "error getting verification form")
+			web.RenderError(w, "error getting verification form")
 			return
 		}
 
 		err = as.VerifyEmail(ctx, token, form.Code)
 		if err != nil {
 			slog.Error("error verifying email", "error", err)
-			render.ErrorFragment(w, err.Error())
+			web.RenderError(w, err.Error())
 			return
 		}
 

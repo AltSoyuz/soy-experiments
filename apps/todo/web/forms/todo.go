@@ -10,7 +10,22 @@ type TodoForm struct {
 	Description string `form:"description"`
 }
 
-func TodoFrom(r *http.Request) (TodoForm, error) {
+func TodoUpdateFrom(r *http.Request) (TodoForm, error) {
+	err := r.ParseForm()
+	if err != nil {
+		return TodoForm{}, err
+	}
+
+	name := r.FormValue("name")
+	description := r.FormValue("description")
+
+	return TodoForm{
+		Name:        name,
+		Description: description,
+	}, nil
+}
+
+func TodoCreateFrom(r *http.Request) (TodoForm, error) {
 	err := r.ParseForm()
 	if err != nil {
 		return TodoForm{}, err

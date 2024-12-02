@@ -2,89 +2,169 @@ package web
 
 import (
 	"embed"
+	"fmt"
 	"html/template"
 	"io"
-	"log/slog"
+	"path/filepath"
+	"strings"
+	"sync"
+	"time"
 )
 
-type PageData struct {
-	Title string
+//go:embed layouts/*.html components/*.html pages/*.html
+var htmlFiles embed.FS
+
+const defaultLayout = "base.html"
+
+// TemplateCache provides a more efficient template management system
+type TemplateCache struct {
+	mu       sync.RWMutex
+	cache    map[string]*template.Template
+	funcMap  template.FuncMap
+	htmlBase *template.Template
 }
 
-type Renderer struct {
-	components *template.Template
-	pages      *template.Template
-}
-
-//go:embed components/* pages/*
-var embedded embed.FS
-
-func NewRender(components *template.Template, pages *template.Template) *Renderer {
-	return &Renderer{
-		components: components,
-		pages:      pages,
+// NewTemplateCache creates an optimized template cache
+func NewTemplateCache(additionalFuncs ...template.FuncMap) *TemplateCache {
+	// Merge additional func maps if provided
+	mergedFuncMap := template.FuncMap{
+		"safe":    func(s string) template.HTML { return template.HTML(s) },
+		"toUpper": strings.ToUpper,
+		"toLower": strings.ToLower,
+		"trimStr": strings.TrimSpace,
+		"now":     time.Now,
+		"upperFirst": func(s string) string {
+			if s == "" {
+				return ""
+			} else {
+				return strings.ToUpper(s[:1]) + s[1:]
+			}
+		},
+		"formatDate": func(t time.Time, format string) string {
+			return t.Format(format)
+		},
 	}
-}
 
-func Init() (*Renderer, error) {
-	componentTemplates, err := template.ParseFS(embedded, "components/*.html")
-	if err != nil {
-		return nil, err
-	}
-	initializeTemplates("components", "component")
-
-	pageTemplates, err := template.ParseFS(embedded, "pages/*.html")
-	if err != nil {
-		return nil, err
-	}
-	initializeTemplates("pages", "page")
-
-	render := NewRender(componentTemplates, pageTemplates)
-
-	return render, nil
-}
-
-func initializeTemplates(dir string, templateType string) {
-	templates, err := embedded.ReadDir(dir)
-	if err != nil || len(templates) == 0 {
-		slog.Warn("no " + templateType + " templates found")
-	} else {
-		var templateNames []string
-		for _, file := range templates {
-			templateNames = append(templateNames, file.Name())
+	for _, fm := range additionalFuncs {
+		for k, v := range fm {
+			mergedFuncMap[k] = v
 		}
-		slog.Info(templateType+" templates initialized", templateType, templateNames)
+	}
+
+	return &TemplateCache{
+		cache:   make(map[string]*template.Template),
+		funcMap: mergedFuncMap,
 	}
 }
 
-func (r *Renderer) RenderPage(w io.Writer, data interface{}, name string) {
-	// check if template exists
-	if r.pages.Lookup(name) == nil {
-		slog.Error("template not found", "template", name)
+// PrecompileTemplates loads and caches all templates upfront
+func (tc *TemplateCache) PrecompileTemplates() error {
+	tc.mu.Lock()
+	defer tc.mu.Unlock()
+
+	// Precompile base layout with global functions
+	baseLayoutTmpl, err := template.New("base").Funcs(tc.funcMap).ParseFS(htmlFiles, "layouts/"+defaultLayout)
+	if err != nil {
+		return fmt.Errorf("failed to parse base layout: %w", err)
+	}
+	tc.htmlBase = baseLayoutTmpl
+
+	// Add base layout to cache
+	tc.cache["base"] = baseLayoutTmpl
+
+	// Read all components
+	components, err := htmlFiles.ReadDir("components")
+	if err != nil {
+		return fmt.Errorf("failed to read components directory: %w", err)
+	}
+
+	// Parse and cache components
+	for _, component := range components {
+		if !component.IsDir() && strings.HasSuffix(component.Name(), ".html") {
+			componentPath := filepath.Join("components", component.Name())
+			if err := tc.parseAndCacheTemplate(componentPath, true); err != nil {
+				return err
+			}
+		}
+	}
+
+	// Read all pages
+	pages, err := htmlFiles.ReadDir("pages")
+	if err != nil {
+		return fmt.Errorf("failed to read pages directory: %w", err)
+	}
+
+	// Parse and cache pages
+	for _, page := range pages {
+		if !page.IsDir() && strings.HasSuffix(page.Name(), ".html") {
+			pagePath := filepath.Join("pages", page.Name())
+			if err := tc.parseAndCacheTemplate(pagePath, false); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// parseAndCacheTemplate efficiently parses and caches a template
+func (tc *TemplateCache) parseAndCacheTemplate(path string, isComponent bool) error {
+	name := strings.TrimSuffix(filepath.Base(path), ".html")
+
+	// Determine which files to parse based on template type
+	var files []string
+	if isComponent {
+		files = []string{"components/*.html", path}
+	} else {
+		files = []string{"layouts/" + defaultLayout, "components/*.html", path}
+	}
+
+	// Parse template with global functions
+	tmpl, err := template.New(name).Funcs(tc.funcMap).ParseFS(htmlFiles, files...)
+	if err != nil {
+		return fmt.Errorf("failed to parse template %s: %w", name, err)
+	}
+
+	tc.cache[name] = tmpl
+	return nil
+}
+
+// GetTemplate retrieves a template with thread-safe read access
+func (tc *TemplateCache) GetTemplate(name string) (*template.Template, error) {
+	tc.mu.RLock()
+	defer tc.mu.RUnlock()
+
+	tmpl, exists := tc.cache[name]
+	if !exists {
+		return nil, fmt.Errorf("template %s not found", name)
+	}
+	return tmpl, nil
+}
+
+// RenderTemplate provides a more robust template rendering
+func (tc *TemplateCache) RenderTemplate(w io.Writer, name, block string, data any) {
+	tmpl, err := tc.GetTemplate(name)
+	if err != nil {
+		fmt.Printf("error getting template: %v\n", err)
 		return
 	}
-	err := r.pages.ExecuteTemplate(w, name, data)
-	if err != nil {
-		slog.Error("failed to execute template", "error", err, "template", name)
-	}
-}
 
-func (r *Renderer) RenderComponent(w io.Writer, data interface{}, name string) {
-	// check if template exists
-	if r.components.Lookup(name) == nil {
-		slog.Error("template not found", "template", name)
+	// Improved error handling with context
+	if err := tmpl.ExecuteTemplate(w, block, data); err != nil {
+		fmt.Printf("error executing template: %v\n", err)
 		return
 	}
-	err := r.components.ExecuteTemplate(w, name, data)
-	if err != nil {
-		slog.Error("failed to execute template", "error", err, "template", name)
-	}
 }
 
-type ErrorFragmentData struct {
-	Message string
+// Singleton cache for global access
+var TemplateSystem = NewTemplateCache()
+
+// RenderPage renders a full page with the base layout
+func RenderPage(w io.Writer, name string, data any) {
+	TemplateSystem.RenderTemplate(w, name, defaultLayout, data)
 }
 
-func (r *Renderer) ErrorFragment(w io.Writer, message string) {
-	r.RenderComponent(w, ErrorFragmentData{Message: message}, "error-msg")
+// RenderComponent renders a reusable component
+func RenderComponent(w io.Writer, name, block string, data any) {
+	TemplateSystem.RenderTemplate(w, name, block, data)
 }

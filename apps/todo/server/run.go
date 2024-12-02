@@ -10,7 +10,6 @@ import (
 	"golang-template-htmx-alpine/apps/todo/todo"
 	"golang-template-htmx-alpine/apps/todo/web"
 	"golang-template-htmx-alpine/lib/buildinfo"
-	"log"
 	"log/slog"
 	"net"
 	"net/http"
@@ -40,31 +39,32 @@ func Run(ctx context.Context) error {
 	// Build the absolute path to the configuration file
 	configPath, err := filepath.Abs(*configPathFlag)
 	if err != nil {
-		log.Fatalf("Failed to resolve absolute path for config: %v", err)
+		return err
 	}
 
-	// Initialize the configuration
-	serverConfig, err := config.Init(configPath)
+	// Initialize the app configuration
+	cfg, err := config.Init(configPath)
 	if err != nil {
-		return fmt.Errorf("error initializing config: %w", err)
+		return err
 	}
 
-	renderer, err := web.Init()
+	// Initialize the web template system
+	err = web.TemplateSystem.PrecompileTemplates()
 	if err != nil {
-		return fmt.Errorf("error initializing templates: %w", err)
+		return err
 	}
 
-	queries, err := store.Init()
+	// Initialize the store with database queries
+	queries, err := store.Init(cfg)
 	if err != nil {
-		return fmt.Errorf("error initializing store: %w", err)
+		return err
 	}
 
-	authService := auth.Init(serverConfig, queries)
+	authService := auth.Init(cfg, queries)
 	todoStore := todo.Init(queries)
 
 	srv := New(
-		serverConfig,
-		renderer,
+		cfg,
 		authService,
 		todoStore,
 	)

@@ -11,12 +11,7 @@ import (
 	"strconv"
 )
 
-func handleRenderTodoList(renderer *web.Renderer, todoStore *todo.TodoStore) http.HandlerFunc {
-	type todoPageData struct {
-		Title string
-		Items []model.Todo
-		Email string
-	}
+func handleRenderTodoList(todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, ok := auth.GetSessionUserFrom(ctx)
@@ -31,16 +26,17 @@ func handleRenderTodoList(renderer *web.Renderer, todoStore *todo.TodoStore) htt
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		page := todoPageData{
+		page := web.TodoPageData{
 			Title: "My Todo List",
 			Items: todos,
 			Email: user.Email,
 		}
-		renderer.RenderPage(w, page, "todos")
+
+		web.RenderTodoList(w, page)
 	}
 }
 
-func handleCreateTodoFragment(renderer *web.Renderer, todoStore *todo.TodoStore) http.HandlerFunc {
+func handleCreateTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.GetSessionUserFrom(r.Context())
 		if !ok {
@@ -48,7 +44,7 @@ func handleCreateTodoFragment(renderer *web.Renderer, todoStore *todo.TodoStore)
 			return
 		}
 
-		form, err := forms.TodoFrom(r)
+		form, err := forms.TodoCreateFrom(r)
 		if err != nil {
 			slog.Error("error getting todo form", "error", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -59,11 +55,11 @@ func handleCreateTodoFragment(renderer *web.Renderer, todoStore *todo.TodoStore)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		renderer.RenderComponent(w, todo, "todo")
+		web.RenderTodoFragment(w, todo)
 	}
 }
 
-func handleGetTodoFormFragment(renderer *web.Renderer, todoStore *todo.TodoStore) http.HandlerFunc {
+func handleGetTodoFormFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, ok := auth.GetSessionUserFrom(ctx)
@@ -87,11 +83,11 @@ func handleGetTodoFormFragment(renderer *web.Renderer, todoStore *todo.TodoStore
 			return
 		}
 
-		renderer.RenderComponent(w, todo, "form")
+		web.RenderFormFragment(w, todo)
 	}
 }
 
-func handleUpdateTodoFragment(renderer *web.Renderer, todoStore *todo.TodoStore) http.HandlerFunc {
+func handleUpdateTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.GetSessionUserFrom(r.Context())
 		if !ok {
@@ -106,7 +102,7 @@ func handleUpdateTodoFragment(renderer *web.Renderer, todoStore *todo.TodoStore)
 			return
 		}
 
-		form, err := forms.TodoFrom(r)
+		form, err := forms.TodoUpdateFrom(r)
 		if err != nil {
 			slog.Error("error getting todo form", "error", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -124,7 +120,7 @@ func handleUpdateTodoFragment(renderer *web.Renderer, todoStore *todo.TodoStore)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		renderer.RenderComponent(w, todo, "todo")
+		web.RenderTodoFragment(w, todo)
 	}
 }
 

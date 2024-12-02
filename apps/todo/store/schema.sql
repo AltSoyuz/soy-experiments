@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS password_reset_request (
     code_hash TEXT NOT NULL UNIQUE
 );
 
-CREATE TABLE oauth_accounts (
+CREATE TABLE IF NOT EXISTS oauth_accounts (
     user_id TEXT NOT NULL UNIQUE PRIMARY KEY REFERENCES user(id),
     provider TEXT NOT NULL,
     provider_user_id TEXT NOT NULL,

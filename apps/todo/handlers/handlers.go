@@ -11,7 +11,6 @@ import (
 func AddRoutes(
 	config *config.Config,
 	mux *http.ServeMux,
-	renderer *web.Renderer,
 	authService *auth.Service,
 	todoStore *todo.TodoStore,
 ) {
@@ -23,26 +22,27 @@ func AddRoutes(
 
 	// Health check
 	mux.HandleFunc("GET /healthz", healthz)
+	mux.Handle("GET /about", renderAboutView())
 
 	// Auth
-	mux.Handle("POST /users", limitRegister(handleCreateUser(renderer, authService)))
-	mux.Handle("GET /login", handleRenderLoginView(renderer))
-	mux.Handle("GET /register", handleRenderRegisterView(renderer))
+	mux.Handle("POST /users", limitRegister(handleCreateUser(authService)))
+	mux.Handle("GET /login", handleRenderLoginView())
+	mux.Handle("GET /register", handleRenderRegisterView())
 	mux.Handle("POST /authenticate/password",
-		limitLogin(handleAuthWithPassword(renderer, authService)),
+		limitLogin(handleAuthWithPassword(authService)),
 	)
 	mux.Handle("GET /logout", handleLogout(authService))
-	mux.Handle("GET /verify-email", limitVerifyEmail(handleRenderVerifyEmail(renderer)))
+	mux.Handle("GET /verify-email", limitVerifyEmail(handleRenderVerifyEmail()))
 	mux.Handle(
 		"POST /email-verification-request",
-		limitVerifyEmail(handleEmailVerification(renderer, authService)),
+		limitVerifyEmail(handleEmailVerification(authService)),
 	)
 
 	// Todos
-	mux.Handle("GET /", protect(handleRenderTodoList(renderer, todoStore)))
-	mux.Handle("POST /todos", protect(handleCreateTodoFragment(renderer, todoStore)))
-	mux.Handle("GET /todos/{id}/form", protect(handleGetTodoFormFragment(renderer, todoStore)))
-	mux.Handle("PUT /todos/{id}", protect(handleUpdateTodoFragment(renderer, todoStore)))
+	mux.Handle("GET /", protect(handleRenderTodoList(todoStore)))
+	mux.Handle("POST /todos", protect(handleCreateTodoFragment(todoStore)))
+	mux.Handle("GET /todos/{id}/form", protect(handleGetTodoFormFragment(todoStore)))
+	mux.Handle("PUT /todos/{id}", protect(handleUpdateTodoFragment(todoStore)))
 	mux.Handle("DELETE /todos/{id}", protect(handleDeleteTodo(todoStore)))
 
 	// mux.HandleFunc("GET /users/{id}",
@@ -51,4 +51,10 @@ func AddRoutes(
 
 	// mux.HandleFunc("DELETE /users/{id}/email-verification-request",
 	// mux.HandleFunc("POST /users/{id}/very-email",
+}
+
+func renderAboutView() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		web.RenderAbout(w)
+	}
 }

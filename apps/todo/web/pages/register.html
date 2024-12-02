@@ -1,31 +1,20 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ .Title }}</title>
-    <script src="https://unpkg.com/htmx.org@2.0.3/dist/htmx.js"
-        integrity="sha384-BBDmZzVt6vjz5YbQqZPtFZW82o8QotoM7RUp5xOxV3nSJ8u2pSdtzFAbGKzTlKtg" crossorigin="anonymous">
-        </script>
-</head>
-
-<body>
-    <h1>{{ .Title }}</h1>
-    <form hx-post="/users" hx-target="#error-msg" hx-swap="outerHTML">
-        <div>
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" required>
-        </div>
-        <div>
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required>
-        </div>
+{{ define "main"}}
+<h1>{{ .Title }}</h1>
+<form hx-post="/users" hx-target="#error-msg" hx-swap="outerHTML">
+    <div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+    </div>
+    <div>
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required>
+    </div>
+    <div>
+        <label for="confirm-password">Confirm Password</label>
+        <input type="password" id="confirm-password" name="confirm-password" required>
         <div>
             <button type="submit">Sign up</button>
         </div>
-    </form>
-    <div id="error-msg"></div>
-</body>
-
-</html>
+</form>
+<div id="error-msg"></div>
+{{ end }}
