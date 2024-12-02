@@ -54,6 +54,9 @@ func TestInit(t *testing.T) {
 		if got.SenderPass != wantConfig.SenderPass {
 			t.Errorf("SenderPass = %v, want %v", got.SenderPass, wantConfig.SenderPass)
 		}
+		if got.Port != wantConfig.Port {
+			t.Errorf("Port = %v, want %v", got.Port, wantConfig.Port)
+		}
 	}
 
 	tests := []struct {
@@ -66,6 +69,7 @@ func TestInit(t *testing.T) {
 		{
 			name: "Valid config from YAML",
 			yamlContent: `
+port: 8080
 smtp_host: smtp.example.com
 smtp_port: 587
 sender_email: test@example.com
@@ -73,6 +77,7 @@ sender_pass: password123
 `,
 			envVars: nil,
 			wantConfig: &Config{
+				Port:        "8080",
 				SMTPHost:    "smtp.example.com",
 				SMTPPort:    587,
 				SenderEmail: "test@example.com",
@@ -83,18 +88,21 @@ sender_pass: password123
 		{
 			name: "Environment variables override YAML",
 			yamlContent: `
+port: 8080
 smtp_host: smtp.example.com
 smtp_port: 587
 sender_email: test@example.com
 sender_pass: password123
 `,
 			envVars: map[string]string{
+				"PORT":         "9090",
 				"SMTP_HOST":    "smtp.override.com",
 				"SMTP_PORT":    "465",
 				"SENDER_EMAIL": "override@example.com",
 				"SENDER_PASS":  "newpassword",
 			},
 			wantConfig: &Config{
+				Port:        "9090",
 				SMTPHost:    "smtp.override.com",
 				SMTPPort:    465,
 				SenderEmail: "override@example.com",
@@ -162,6 +170,7 @@ func TestValidateConfig(t *testing.T) {
 		{
 			name: "Valid config",
 			config: Config{
+				Port:        "8080",
 				SMTPHost:    "smtp.example.com",
 				SMTPPort:    587,
 				SenderEmail: "test@example.com",
@@ -179,7 +188,7 @@ func TestValidateConfig(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "Invalid port",
+			name: "Invalid SMTP port",
 			config: Config{
 				SMTPHost:    "smtp.example.com",
 				SMTPPort:    0,

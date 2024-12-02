@@ -29,7 +29,13 @@ func Run(ctx context.Context) error {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	levelVar := &slog.LevelVar{}
+	if os.Getenv("ENV") != "production" {
+		levelVar.Set(slog.LevelDebug)
+	} else {
+		levelVar.Set(slog.LevelInfo)
+	}
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: levelVar}))
 	slog.SetDefault(logger)
 
 	buildinfo.Init()
@@ -70,13 +76,13 @@ func Run(ctx context.Context) error {
 	)
 
 	httpServer := &http.Server{
-		Addr:    net.JoinHostPort("", "8080"),
+		Addr:    net.JoinHostPort("", cfg.Port),
 		Handler: srv,
 	}
 
 	// Start server
 	go func() {
-		logger.Info("starting http server on 8080")
+		logger.Info("starting http server", "port", cfg.Port)
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "error starting http server: %s\n", err)
 		}

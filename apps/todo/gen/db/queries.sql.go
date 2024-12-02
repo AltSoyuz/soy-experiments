@@ -33,7 +33,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 }
 
 const createTodo = `-- name: CreateTodo :one
-INSERT INTO todos (name, user_id, description) VALUES (?, ?, ?) RETURNING id, user_id, name, description
+INSERT INTO todos (name, user_id, description) VALUES (?, ?, ?) RETURNING id, user_id, name, description, is_complete
 `
 
 type CreateTodoParams struct {
@@ -50,6 +50,7 @@ func (q *Queries) CreateTodo(ctx context.Context, arg CreateTodoParams) (Todo, e
 		&i.UserID,
 		&i.Name,
 		&i.Description,
+		&i.IsComplete,
 	)
 	return i, err
 }
@@ -110,7 +111,7 @@ func (q *Queries) DeleteUserEmailVerificationRequest(ctx context.Context, userID
 }
 
 const getTodo = `-- name: GetTodo :one
-SELECT id, user_id, name, description FROM todos WHERE id = ? AND user_id = ?
+SELECT id, user_id, name, description, is_complete FROM todos WHERE id = ? AND user_id = ?
 `
 
 type GetTodoParams struct {
@@ -126,12 +127,13 @@ func (q *Queries) GetTodo(ctx context.Context, arg GetTodoParams) (Todo, error) 
 		&i.UserID,
 		&i.Name,
 		&i.Description,
+		&i.IsComplete,
 	)
 	return i, err
 }
 
 const getTodos = `-- name: GetTodos :many
-SELECT id, user_id, name, description FROM todos WHERE user_id = ?
+SELECT id, user_id, name, description, is_complete FROM todos WHERE user_id = ?
 `
 
 func (q *Queries) GetTodos(ctx context.Context, userID int64) ([]Todo, error) {
@@ -148,6 +150,7 @@ func (q *Queries) GetTodos(ctx context.Context, userID int64) ([]Todo, error) {
 			&i.UserID,
 			&i.Name,
 			&i.Description,
+			&i.IsComplete,
 		); err != nil {
 			return nil, err
 		}
@@ -227,6 +230,15 @@ func (q *Queries) InsertUserEmailVerificationRequest(ctx context.Context, arg In
 	return i, err
 }
 
+const ping = `-- name: Ping :exec
+SELECT 1
+`
+
+func (q *Queries) Ping(ctx context.Context) error {
+	_, err := q.db.ExecContext(ctx, ping)
+	return err
+}
+
 const setUserEmailVerified = `-- name: SetUserEmailVerified :exec
 UPDATE user SET email_verified = 1 WHERE id = ?
 `
@@ -258,12 +270,16 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (S
 }
 
 const updateTodo = `-- name: UpdateTodo :one
-UPDATE todos SET name = ?, description = ? WHERE id = ? AND user_id = ? RETURNING id, user_id, name, description
+UPDATE todos 
+SET name = ?, description = ?, is_complete = ? 
+WHERE id = ? AND user_id = ? 
+RETURNING id, user_id, name, description, is_complete
 `
 
 type UpdateTodoParams struct {
 	Name        string
 	Description sql.NullString
+	IsComplete  int64
 	ID          int64
 	UserID      int64
 }
@@ -272,6 +288,7 @@ func (q *Queries) UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, e
 	row := q.db.QueryRowContext(ctx, updateTodo,
 		arg.Name,
 		arg.Description,
+		arg.IsComplete,
 		arg.ID,
 		arg.UserID,
 	)
@@ -281,6 +298,7 @@ func (q *Queries) UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, e
 		&i.UserID,
 		&i.Name,
 		&i.Description,
+		&i.IsComplete,
 	)
 	return i, err
 }

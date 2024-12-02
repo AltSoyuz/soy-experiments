@@ -75,6 +75,7 @@ func handleGetTodoFormFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 			http.Error(w, "Invalid ID", http.StatusBadRequest)
 			return
 		}
+		slog.Debug("fetching todo", "id", id, "userId", user.Id)
 
 		todo, err := todoStore.FindById(ctx, id, user.Id)
 		if err != nil {
@@ -116,6 +117,7 @@ func handleUpdateTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 			UserId:      user.Id,
 		})
 
+		slog.Debug("updated todo", "todo", todo)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
@@ -145,5 +147,38 @@ func handleDeleteTodo(todoStore *todo.TodoStore) http.HandlerFunc {
 		}
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+func handleCompleteTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user, ok := auth.GetSessionUserFrom(r.Context())
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		idStr := r.PathValue("id")
+		id, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			http.Error(w, "Invalid ID", http.StatusBadRequest)
+			return
+		}
+
+		todo, err := todoStore.FindById(r.Context(), id, user.Id)
+		if err != nil {
+			slog.Error("error fetching todo", "error", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		todo.IsComplete = !todo.IsComplete
+
+		todo, err = todoStore.Update(r.Context(), todo)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		web.RenderTodoFragment(w, todo)
 	}
 }

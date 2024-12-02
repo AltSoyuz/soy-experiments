@@ -9,6 +9,10 @@ type loginPageData struct {
 	Title string
 }
 
+func RenderNotFound(w io.Writer) {
+	RenderPage(w, "404", nil)
+}
+
 func RenderRegister(w io.Writer) {
 	RenderPage(w, "register", loginPageData{Title: "Register"})
 }

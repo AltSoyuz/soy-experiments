@@ -16,6 +16,7 @@ type Config struct {
 	SenderEmail string `yaml:"sender_email" env:"SENDER_EMAIL"`
 	SenderPass  string `yaml:"sender_pass" env:"SENDER_PASS"`
 	Env         string `yaml:"env" env:"ENV"`
+	Port        string `yaml:"port" env:"PORT"`
 }
 
 func Init(filepath string) (*Config, error) {
@@ -63,9 +64,14 @@ func loadFromYAML(filepath string) (*Config, error) {
 }
 
 func applyEnvOverrides(cfg *Config) error {
+	if env := os.Getenv("PORT"); env != "" {
+		cfg.Port = env
+	}
+
 	if host := os.Getenv("SMTP_HOST"); host != "" {
 		cfg.SMTPHost = host
 	}
+
 	if port := os.Getenv("SMTP_PORT"); port != "" {
 		p, err := strconv.Atoi(port)
 		if err != nil {
@@ -73,9 +79,11 @@ func applyEnvOverrides(cfg *Config) error {
 		}
 		cfg.SMTPPort = p
 	}
+
 	if email := os.Getenv("SENDER_EMAIL"); email != "" {
 		cfg.SenderEmail = email
 	}
+
 	if pass := os.Getenv("SENDER_PASS"); pass != "" {
 		cfg.SenderPass = pass
 	}
@@ -89,6 +97,9 @@ func applyEnvOverrides(cfg *Config) error {
 }
 
 func validateConfig(cfg *Config) error {
+	if cfg.Port == "" {
+		return errors.New("Port is required")
+	}
 	if cfg.SMTPHost == "" {
 		return errors.New("SMTPHost is required")
 	}

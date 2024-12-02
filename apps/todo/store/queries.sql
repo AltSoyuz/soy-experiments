@@ -1,3 +1,6 @@
+-- name: Ping :exec
+SELECT 1;
+
 -- name: GetTodo :one
 SELECT * FROM todos WHERE id = ? AND user_id = ?;
 
@@ -8,7 +11,10 @@ SELECT * FROM todos WHERE user_id = ?;
 INSERT INTO todos (name, user_id, description) VALUES (?, ?, ?) RETURNING *;
 
 -- name: UpdateTodo :one
-UPDATE todos SET name = ?, description = ? WHERE id = ? AND user_id = ? RETURNING *;
+UPDATE todos 
+SET name = ?, description = ?, is_complete = ? 
+WHERE id = ? AND user_id = ? 
+RETURNING *;
 
 -- name: DeleteTodo :exec
 DELETE FROM todos WHERE id = ? AND user_id = ?;

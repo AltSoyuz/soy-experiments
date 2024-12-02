@@ -32,6 +32,7 @@ func (s *TodoStore) List(ctx context.Context, userId int64) ([]model.Todo, error
 			Id:          todo.ID,
 			Name:        todo.Name,
 			Description: todo.Description.String,
+			IsComplete:  todo.IsComplete != 0,
 		})
 	}
 
@@ -72,6 +73,7 @@ func (s *TodoStore) FindById(ctx context.Context, id, userId int64) (model.Todo,
 		Name:        todo.Name,
 		UserId:      todo.UserID,
 		Description: todo.Description.String,
+		IsComplete:  todo.IsComplete != 0,
 	}, nil
 }
 
@@ -101,11 +103,16 @@ func (s *TodoStore) Create(ctx context.Context, todo model.Todo) error {
 }
 
 func (s *TodoStore) Update(ctx context.Context, todo model.Todo) (model.Todo, error) {
+	isComplete := int64(0)
+	if todo.IsComplete {
+		isComplete = 1
+	}
 	t, err := s.queries.UpdateTodo(ctx, db.UpdateTodoParams{
 		ID:          todo.Id,
 		UserID:      todo.UserId,
 		Name:        todo.Name,
 		Description: sql.NullString{String: todo.Description, Valid: true},
+		IsComplete:  isComplete,
 	})
 
 	if err != nil {
@@ -114,8 +121,10 @@ func (s *TodoStore) Update(ctx context.Context, todo model.Todo) (model.Todo, er
 	}
 
 	return model.Todo{
+		Id:          t.ID,
 		Name:        t.Name,
 		Description: t.Description.String,
 		UserId:      t.UserID,
+		IsComplete:  t.IsComplete != 0,
 	}, nil
 }

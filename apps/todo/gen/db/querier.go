@@ -20,6 +20,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserEmailVerificationRequest(ctx context.Context, userID int64) (EmailVerificationRequest, error)
 	InsertUserEmailVerificationRequest(ctx context.Context, arg InsertUserEmailVerificationRequestParams) (EmailVerificationRequest, error)
+	Ping(ctx context.Context) error
 	SetUserEmailVerified(ctx context.Context, id int64) error
 	UpdateSession(ctx context.Context, arg UpdateSessionParams) (Session, error)
 	UpdateTodo(ctx context.Context, arg UpdateTodoParams) (Todo, error)

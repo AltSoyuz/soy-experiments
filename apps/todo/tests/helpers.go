@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"golang-template-htmx-alpine/apps/todo/auth"
 	"golang-template-htmx-alpine/apps/todo/server"
 	"golang-template-htmx-alpine/lib/httpserver"
@@ -15,6 +16,7 @@ import (
 
 // TestConfig holds test configuration parameters
 type TestConfig struct {
+	Port       int
 	BaseURL    string
 	RateLimit  int
 	MaxRetries int
@@ -22,10 +24,11 @@ type TestConfig struct {
 }
 
 var defaultTestConfig = TestConfig{
-	BaseURL:    "http://localhost:8080",
+	BaseURL:    "http://localhost:",
+	Port:       8080,
 	RateLimit:  5,
 	MaxRetries: 10,
-	Timeout:    time.Second,
+	Timeout:    2 * time.Minute,
 }
 
 type testServer struct {
@@ -147,6 +150,7 @@ func setupServer(t *testing.T, config TestConfig) (*testServer, chan error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	envVars := map[string]string{
+		"PORT":         fmt.Sprintf("%d", config.Port),
 		"SMTP_HOST":    "smtp.mailtrap.io",
 		"SMTP_PORT":    "2525",
 		"SENDER_EMAIL": "email",
@@ -161,7 +165,7 @@ func setupServer(t *testing.T, config TestConfig) (*testServer, chan error) {
 	}
 
 	ts := &testServer{
-		baseURL: config.BaseURL,
+		baseURL: fmt.Sprintf("%s%d", config.BaseURL, config.Port),
 		client:  &http.Client{Timeout: config.Timeout},
 		t:       t,
 		ctx:     ctx,
@@ -177,7 +181,7 @@ func setupServer(t *testing.T, config TestConfig) (*testServer, chan error) {
 		errChan <- server.Run(ctx)
 	}()
 
-	if err := httpserver.WaitForReady(ctx, config.Timeout, config.BaseURL+"/healthz"); err != nil {
+	if err := httpserver.WaitForReady(ctx, config.Timeout, config.BaseURL+fmt.Sprintf("%d", config.Port)+"/healthz"); err != nil {
 		t.Fatalf("server not ready: %v", err)
 	}
 
@@ -226,5 +230,17 @@ func (s *testServer) sendRequest(method, path, body string, htmx bool, cookies .
 }
 
 func randomEmail() string {
-	return "test" + time.Now().Format("20060102150405") + "@example.com"
+	// Get current timestamp
+	timestamp := time.Now().UnixNano()
+
+	// Generate random string
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	b := make([]byte, 8)
+	for i := range b {
+		b[i] = letters[timestamp%int64(len(letters))]
+		timestamp = timestamp / int64(len(letters))
+	}
+
+	// Create email with timestamp and random string
+	return fmt.Sprintf("test_%d_%s@example.com", time.Now().Unix(), string(b))
 }

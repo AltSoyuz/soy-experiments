@@ -17,7 +17,7 @@ vet:
 fmt:
 	go fmt ./...
 
-test:
+test: 
 	go test ./...
 
 test-race:
@@ -45,8 +45,24 @@ install-govulncheck:
 govulncheck: install-govulncheck
 	govulncheck ./...
 
+install-golang-migrate:
+	which migrate || go install -tags 'sqlite3' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
 install-golangci-lint:
 	which golangci-lint || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.60.3
+
+migrate: install-golang-migrate
+	migrate -path apps/$(APP_NAME)/store/migrations \
+			-database "sqlite3://$(APP_NAME).db" $(MIGRATE_CMD)
+
+migrate-up: 
+	APP_NAME=$(APP_NAME) MIGRATE_CMD=up $(MAKE) migrate
+
+migrate-down:
+	APP_NAME=$(APP_NAME) MIGRATE_CMD="down 1" $(MAKE) migrate 
+
+delete-test-db:
+	rm -rf $(APP_NAME).test.db
 
 remove-golangci-lint:
 	rm -rf `which golangci-lint`

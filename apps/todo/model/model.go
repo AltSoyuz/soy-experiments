@@ -5,6 +5,7 @@ type Todo struct {
 	Name        string
 	UserId      int64
 	Description string
+	IsComplete  bool
 }
 
 type Session struct {

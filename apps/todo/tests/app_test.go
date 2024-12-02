@@ -195,6 +195,16 @@ func TestTodoCRUD(t *testing.T) {
 	).assertStatus(http.StatusOK).
 		assertContains("Updated Todo")
 
+	// Complete todo
+	server.sendRequest(
+		http.MethodPut,
+		"/todos/1/complete",
+		"",
+		true,
+		user.Cookies...,
+	).assertStatus(http.StatusOK).
+		assertContains("line-through")
+
 	// Delete todo
 	server.sendRequest(
 		http.MethodDelete,

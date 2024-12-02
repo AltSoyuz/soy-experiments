@@ -6,34 +6,46 @@ import (
 	"database/sql"
 	"errors"
 	"golang-template-htmx-alpine/apps/todo/gen/db"
+	"log/slog"
 	"time"
 )
 
 type FakeQuerier struct {
-	Sessions                  map[string]db.CreateSessionParams
-	Todos                     map[int64]db.CreateTodoParams
-	Users                     map[int64]db.CreateUserParams
-	EmailVerificationRequests map[int64]db.InsertUserEmailVerificationRequestParams
+	Sessions                  map[string]db.Session
+	Todos                     map[int64]db.Todo
+	Users                     map[int64]db.User
+	EmailVerificationRequests map[int64]db.EmailVerificationRequest
 }
 
 func NewFakeQuerier() *FakeQuerier {
 	return &FakeQuerier{
-		Sessions:                  make(map[string]db.CreateSessionParams),
-		Todos:                     make(map[int64]db.CreateTodoParams),
-		Users:                     make(map[int64]db.CreateUserParams),
-		EmailVerificationRequests: make(map[int64]db.InsertUserEmailVerificationRequestParams),
+		Sessions:                  make(map[string]db.Session),
+		Todos:                     make(map[int64]db.Todo),
+		Users:                     make(map[int64]db.User),
+		EmailVerificationRequests: make(map[int64]db.EmailVerificationRequest),
 	}
+}
+func (f *FakeQuerier) Ping(ctx context.Context) error {
+	slog.InfoContext(ctx, "ping")
+	return nil
 }
 
 func (f *FakeQuerier) CreateSession(ctx context.Context, arg db.CreateSessionParams) (db.Session, error) {
 	if arg.ID == "" || arg.UserID <= 0 {
 		return db.Session{}, errors.New("invalid session parameters")
 	}
-	f.Sessions[arg.ID] = arg
-	return db.Session(db.Session{
-		ID:     arg.ID,
-		UserID: arg.UserID,
-	}), nil
+	f.Sessions[arg.ID] = db.Session{
+		ID:        arg.ID,
+		UserID:    arg.UserID,
+		ExpiresAt: arg.ExpiresAt,
+		CreatedAt: sql.NullString{String: time.Now().Format(time.RFC3339), Valid: true},
+	}
+	return db.Session{
+		ID:        arg.ID,
+		UserID:    arg.UserID,
+		ExpiresAt: arg.ExpiresAt,
+		CreatedAt: sql.NullString{String: time.Now().Format(time.RFC3339), Valid: true},
+	}, nil
 }
 
 // Implement other methods as no-op or panics if not needed for this test
@@ -45,14 +57,16 @@ func (f *FakeQuerier) CreateTodo(ctx context.Context, arg db.CreateTodoParams) (
 	if _, err := rand.Read(randomInt); err != nil {
 		return db.Todo{}, err
 	}
+
 	todo := db.Todo{
 		ID:          int64(randomInt[0]),
 		Name:        arg.Name,
 		Description: arg.Description,
 		UserID:      arg.UserID,
+		IsComplete:  0,
 	}
 
-	f.Todos[todo.ID] = arg
+	f.Todos[todo.ID] = todo
 
 	return todo, nil
 }
@@ -70,7 +84,7 @@ func (f *FakeQuerier) CreateUser(ctx context.Context, arg db.CreateUserParams) (
 		Email:        arg.Email,
 		PasswordHash: arg.PasswordHash,
 	}
-	f.Users[user.ID] = arg
+	f.Users[user.ID] = user
 	return user, nil
 }
 
@@ -109,6 +123,7 @@ func (f *FakeQuerier) GetTodos(ctx context.Context, userId int64) ([]db.Todo, er
 					Name:        todo.Name,
 					Description: todo.Description,
 					UserID:      todo.UserID,
+					IsComplete:  todo.IsComplete,
 				},
 			}, nil
 		}
@@ -185,7 +200,7 @@ func (f *FakeQuerier) InsertUserEmailVerificationRequest(ctx context.Context, ar
 		return db.EmailVerificationRequest{}, errors.New("invalid email verification request parameters")
 	}
 	emailVerificationRequest := db.EmailVerificationRequest(arg)
-	f.EmailVerificationRequests[arg.UserID] = arg
+	f.EmailVerificationRequests[arg.UserID] = db.EmailVerificationRequest(arg)
 	return emailVerificationRequest, nil
 }
 

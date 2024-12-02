@@ -42,6 +42,7 @@ type Todo struct {
 	UserID      int64
 	Name        string
 	Description sql.NullString
+	IsComplete  int64
 }
 
 type User struct {

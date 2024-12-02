@@ -23,6 +23,8 @@ func AddRoutes(
 	// Health check
 	mux.HandleFunc("GET /healthz", healthz)
 	mux.Handle("GET /about", renderAboutView())
+	mux.Handle("GET /404", notFoundView())
+	mux.Handle("/", notFoundView())
 
 	// Auth
 	mux.Handle("POST /users", limitRegister(handleCreateUser(authService)))
@@ -39,18 +41,18 @@ func AddRoutes(
 	)
 
 	// Todos
-	mux.Handle("GET /", protect(handleRenderTodoList(todoStore)))
+	mux.Handle("GET /{$}", protect(handleRenderTodoList(todoStore)))
 	mux.Handle("POST /todos", protect(handleCreateTodoFragment(todoStore)))
 	mux.Handle("GET /todos/{id}/form", protect(handleGetTodoFormFragment(todoStore)))
 	mux.Handle("PUT /todos/{id}", protect(handleUpdateTodoFragment(todoStore)))
 	mux.Handle("DELETE /todos/{id}", protect(handleDeleteTodo(todoStore)))
+	mux.Handle("PUT /todos/{id}/complete", protect(handleCompleteTodoFragment(todoStore)))
+}
 
-	// mux.HandleFunc("GET /users/{id}",
-	// mux.HandleFunc("DELETE /users/{id}",
-	// mux.HandleFunc("POST /users/{id}/update-password",
-
-	// mux.HandleFunc("DELETE /users/{id}/email-verification-request",
-	// mux.HandleFunc("POST /users/{id}/very-email",
+func notFoundView() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		web.RenderNotFound(w)
+	}
 }
 
 func renderAboutView() http.HandlerFunc {

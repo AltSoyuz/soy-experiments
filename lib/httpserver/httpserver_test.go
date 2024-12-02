@@ -167,7 +167,7 @@ func TestCSRFProtection(t *testing.T) {
 		{
 			name:       "POST request with valid Origin header",
 			method:     http.MethodPost,
-			origin:     "https://example.com",
+			origin:     "http://localhost:8080",
 			wantStatus: http.StatusOK,
 		},
 		{
@@ -183,9 +183,15 @@ func TestCSRFProtection(t *testing.T) {
 			wantStatus: http.StatusForbidden,
 		},
 		{
-			name:       "POST request with localhost Origin header",
+			name:       "POST request with another valid Origin header",
 			method:     http.MethodPost,
-			origin:     "http://localhost:8080",
+			origin:     "http://localhost:8081",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "POST request with yet another valid Origin header",
+			method:     http.MethodPost,
+			origin:     "http://localhost:8082",
 			wantStatus: http.StatusOK,
 		},
 	}
