@@ -8,4 +8,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require golang.org/x/sys v0.27.0 // indirect
+require (
+	golang.org/x/oauth2 v0.24.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
+)

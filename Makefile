@@ -51,6 +51,9 @@ install-golang-migrate:
 install-golangci-lint:
 	which golangci-lint || curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.60.3
 
+install-trufflehog:
+	which trufflehog || curl -sSfL https://raw.githubusercontent.com/trufflesecurity/trufflehog/main/scripts/install.sh | sh -s -- -b /usr/local/bin
+
 migrate: install-golang-migrate
 	migrate -path apps/$(APP_NAME)/store/migrations \
 			-database "sqlite3://$(APP_NAME).db" $(MIGRATE_CMD)
