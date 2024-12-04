@@ -1,12 +1,16 @@
 {{ define "todo" }}
 <li>
-    {{ if .IsComplete }}
-    <span style="text-decoration: line-through;">{{ .Name }} - {{ .Description }}</span>
+    {{ if .Todo.IsComplete }}
+    <span style="text-decoration: line-through;">{{ .Todo.Name }} - {{ .Todo.Description }}</span>
     {{ else }}
-    <span>{{ .Name }} - {{ .Description }}</span>
+    <span>{{ .Todo.Name }} - {{ .Todo.Description }}</span>
     {{ end }}
-    <button hx-get="todos/{{ .Id }}/form" hx-target="closest li" hx-swap="outerHTML">Edit</button>
-    <button hx-delete="todos/{{ .Id }}" hx-target="closest li" hx-swap="delete">Delete</button>
-    <input type="checkbox" hx-put="todos/{{ .Id }}/complete" hx-target="closest li" hx-swap="outerHTML" {{ if .IsComplete }}checked{{ end }}>
+    <button hx-get="todos/{{ .Todo.Id }}/form" hx-target="closest li" hx-swap="outerHTML">Edit</button>
+    <button hx-delete="todos/{{ .Todo.Id }}" hx-target="closest li" hx-swap="delete">
+        Delete
+    </button>
+    <input type="checkbox" hx-put="todos/{{ .Todo.Id }}/complete" hx-target="closest li" hx-swap="outerHTML" 
+        {{ if .Todo.IsComplete }}checked{{ end }} 
+        hx-headers="{'X-CSRF-Token': '{{ .CSRFToken }}'}">
 </li>
 {{ end }}

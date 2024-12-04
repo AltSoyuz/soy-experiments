@@ -11,6 +11,7 @@ import (
 
 func New(
 	config *config.Config,
+	csrf *httpserver.CSRFProtection,
 	authService *auth.Service,
 	todoStore *todo.TodoStore,
 ) http.Handler {
@@ -18,10 +19,11 @@ func New(
 
 	handlers.AddRoutes(
 		config,
+		csrf,
 		mux,
 		authService,
 		todoStore,
 	)
 
-	return httpserver.CSRFProtection(mux)
+	return csrf.Middleware(mux)
 }

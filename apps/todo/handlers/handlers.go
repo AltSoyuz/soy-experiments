@@ -5,11 +5,13 @@ import (
 	"golang-template-htmx-alpine/apps/todo/config"
 	"golang-template-htmx-alpine/apps/todo/todo"
 	"golang-template-htmx-alpine/apps/todo/web"
+	"golang-template-htmx-alpine/lib/httpserver"
 	"net/http"
 )
 
 func AddRoutes(
 	config *config.Config,
+	csrf *httpserver.CSRFProtection,
 	mux *http.ServeMux,
 	authService *auth.Service,
 	todoStore *todo.TodoStore,
@@ -27,26 +29,26 @@ func AddRoutes(
 	mux.Handle("/", notFoundView())
 
 	// Auth
-	mux.Handle("POST /users", limitRegister(handleCreateUser(authService)))
-	mux.Handle("GET /login", handleRenderLoginView())
-	mux.Handle("GET /register", handleRenderRegisterView())
+	mux.Handle("POST /users", limitRegister(handleCreateUser(authService, csrf)))
+	mux.Handle("GET /login", handleRenderLoginView(csrf))
+	mux.Handle("GET /register", handleRenderRegisterView(csrf))
 	mux.Handle("POST /authenticate/password",
-		limitLogin(handleAuthWithPassword(authService)),
+		limitLogin(handleAuthWithPassword(authService, csrf)),
 	)
 	mux.Handle("GET /logout", handleLogout(authService))
-	mux.Handle("GET /verify-email", limitVerifyEmail(handleRenderVerifyEmail()))
+	mux.Handle("GET /verify-email", limitVerifyEmail(handleRenderVerifyEmail(csrf)))
 	mux.Handle(
 		"POST /email-verification-request",
-		limitVerifyEmail(handleEmailVerification(authService)),
+		limitVerifyEmail(handleEmailVerification(authService, csrf)),
 	)
 
 	// Todos
-	mux.Handle("GET /{$}", protect(handleRenderTodoList(todoStore)))
-	mux.Handle("POST /todos", protect(handleCreateTodoFragment(todoStore)))
-	mux.Handle("GET /todos/{id}/form", protect(handleGetTodoFormFragment(todoStore)))
-	mux.Handle("PUT /todos/{id}", protect(handleUpdateTodoFragment(todoStore)))
+	mux.Handle("GET /{$}", protect(handleRenderTodoList(todoStore, csrf)))
+	mux.Handle("POST /todos", protect(handleCreateTodoFragment(todoStore, csrf)))
+	mux.Handle("GET /todos/{id}/form", protect(handleGetTodoFormFragment(todoStore, csrf)))
+	mux.Handle("PUT /todos/{id}", protect(handleUpdateTodoFragment(todoStore, csrf)))
 	mux.Handle("DELETE /todos/{id}", protect(handleDeleteTodo(todoStore)))
-	mux.Handle("PUT /todos/{id}/complete", protect(handleCompleteTodoFragment(todoStore)))
+	mux.Handle("PUT /todos/{id}/complete", protect(handleCompleteTodoFragment(todoStore, csrf)))
 }
 
 func notFoundView() http.HandlerFunc {

@@ -4,17 +4,18 @@ import (
 	"golang-template-htmx-alpine/apps/todo/auth"
 	"golang-template-htmx-alpine/apps/todo/web"
 	"golang-template-htmx-alpine/apps/todo/web/forms"
+	"golang-template-htmx-alpine/lib/httpserver"
 	"log/slog"
 	"net/http"
 )
 
 // handleCreateUser creates a new user account and redirects to the login page.
-func handleCreateUser(authService *auth.Service) http.HandlerFunc {
+func handleCreateUser(authService *auth.Service, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		form, err := forms.RegisterFrom(r)
 		if err != nil {
-			slog.Error("error parsing form", "error", err)
-			web.RenderError(w, err.Error())
+			csrfToken := csrf.GenerateToken()
+			web.RenderRegister(w, csrfToken, err.Error())
 			return
 		}
 
@@ -22,7 +23,8 @@ func handleCreateUser(authService *auth.Service) http.HandlerFunc {
 
 		if err != nil {
 			slog.Error("error registering user", "error", err)
-			web.RenderError(w, err.Error())
+			csrfToken := csrf.GenerateToken()
+			web.RenderRegister(w, csrfToken, err.Error())
 			return
 		}
 

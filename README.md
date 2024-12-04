@@ -2,12 +2,46 @@
 
 GOKISS is a simple and easy-to-use web server written in Go. It is designed to serve static files or create simple web applications effortlessly.
 
+### [Features](#features)
+- [x] Session auth
+- [x] Email verification with TOTP
+- [x] Server-side rendering
+- [x] Rate limiting
+- [x] Sqlite3
+- [x] Db migrations
+- [x] Logging
+- [x] Middleware
+- [x] Configuration
+- [x] Unit Testing
+- [x] Integration Testing
+- [x] Automatisaton with makefiles
+- [x] CSRF protection (origin check but not token in form) 
+- [] OAuth login
+- [] Password reset
+- [] Grpc with protobuf
+- [] ConnectRPC
+- [] React frontend
+- [] TailwindCSS
+- [] Pulumi deployment on Hetzner
+- [] Github actions
+- [] Realtime with websockets
+- [] Realtime with SSE
+- [] Realtime with GRPC
+- [] E2E testing with Cypress/Playwright
+- [] SSR with React
+- [] [Request Coallescing](https://jazco.dev/2023/09/28/request-coalescing/)
+- [] Grafana & Prometheus
+- [] Memcached
+- [] Kubernetes
+- [] Temporal io
+- [] Payment
+- [] Live reload (Optional)
+
 ## Installation
 
 To install GOKISS, ensure you have Go installed on your system. You can download Go from the official website [here](https://golang.org/). Version 1.22 or higher is required.
 
 ## Resources
-
 
 **Structure & Language:**
 - [Structure](https://go.dev/doc/modules/layout)
@@ -33,10 +67,20 @@ To install GOKISS, ensure you have Go installed on your system. You can download
 - [Auth middleware](https://pilcrowonpaper.com/blog/middleware-auth/)
 - [Rate limit](https://go.dev/wiki/RateLimiting)
 
+
+
 ## Exemples
 - [Neosync](https://github.com/nucleuscloud/neosync)
 - [Kutt](https://github.com/thedevs-network/kutt)
 - [VictoriaMetrics](https://github.com/VictoriaMetrics/VictoriaMetrics)
+
+## Inspiration
+- [Company process I like](https://betterstack.com/careers)
+
+
+
+## UI
+- [UI framework comparaison](https://component-party.dev/)
 
 ## User Scenarios
 

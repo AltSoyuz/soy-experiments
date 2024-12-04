@@ -9,16 +9,13 @@ import (
 )
 
 func WaitForReady(ctx context.Context, timeout time.Duration, endpoint string) error {
-	// Crear el cliente HTTP una sola vez fuera del loop
 	client := &http.Client{
-		Timeout: 5 * time.Second, // Añadir timeout al cliente
+		Timeout: 5 * time.Second,
 	}
 
-	// Crear un timer para el timeout general
 	timeoutTimer := time.NewTimer(timeout)
 	defer timeoutTimer.Stop()
 
-	// Crear ticker para los reintentos
 	ticker := time.NewTicker(250 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -36,12 +33,10 @@ func WaitForReady(ctx context.Context, timeout time.Duration, endpoint string) e
 
 			resp, err := client.Do(req)
 			if err != nil {
-				// Loggear el error pero continuar intentando
 				log.Printf("Error making request: %v", err)
 				continue
 			}
 
-			// Asegurar que siempre cerramos el body
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusOK {
@@ -49,26 +44,7 @@ func WaitForReady(ctx context.Context, timeout time.Duration, endpoint string) e
 				return nil
 			}
 
-			// Loggear códigos de estado no exitosos
 			log.Printf("Server not ready yet. Status: %d", resp.StatusCode)
 		}
 	}
-}
-
-func CSRFProtection(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			origin := r.Header.Get("Origin")
-			allowedOrigins := map[string]bool{
-				"http://localhost:8080": true,
-				"http://localhost:8081": true,
-				"http://localhost:8082": true,
-			}
-			if origin == "" || !allowedOrigins[origin] {
-				http.Error(w, "Forbidden: Invalid origin", http.StatusForbidden)
-				return
-			}
-		}
-		next.ServeHTTP(w, r)
-	})
 }

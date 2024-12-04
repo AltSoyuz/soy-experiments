@@ -5,54 +5,60 @@ import (
 	"io"
 )
 
-type loginPageData struct {
-	Title string
+type pageData struct {
+	Title     string
+	CSRFToken string
+	Error     string
 }
 
 func RenderNotFound(w io.Writer) {
 	RenderPage(w, "404", nil)
 }
 
-func RenderRegister(w io.Writer) {
-	RenderPage(w, "register", loginPageData{Title: "Register"})
+func RenderRegister(w io.Writer, csrfToken, error string) {
+	RenderPage(w, "register", pageData{Title: "Register", CSRFToken: csrfToken, Error: error})
 }
 
-func RenderLogin(w io.Writer) {
-	RenderPage(w, "login", loginPageData{Title: "Login"})
+func RenderLogin(w io.Writer, csrfToken, error string) {
+	RenderPage(w, "login", pageData{Title: "Login", CSRFToken: csrfToken, Error: error})
 }
 
-func RenderVerifyEmail(w io.Writer) {
-	RenderPage(w, "verify-email", loginPageData{Title: "Verify Email"})
+func RenderVerifyEmail(w io.Writer, csrfToken, error string) {
+	RenderPage(
+		w,
+		"verify-email",
+		pageData{Title: "Verify Email", CSRFToken: csrfToken, Error: error},
+	)
 }
 
 func RenderAbout(w io.Writer) {
-	RenderPage(w, "about", loginPageData{Title: "About"})
+	RenderPage(w, "about", pageData{Title: "About"})
 }
 
 func Render404(w io.Writer) {
-	RenderPage(w, "404", loginPageData{Title: "404"})
+	RenderPage(w, "404", pageData{Title: "404"})
 }
 
 type TodoPageData struct {
-	Title string
-	Items []model.Todo
-	Email string
+	Title     string
+	Items     []model.Todo
+	Email     string
+	CSRFToken string
 }
 
 func RenderTodoList(w io.Writer, page TodoPageData) {
 	RenderPage(w, "index", page)
 }
 
-func RenderFormFragment(w io.Writer, todo model.Todo) {
-	RenderComponent(w, "form", "form", todo)
+type TodoComponentData struct {
+	Todo      model.Todo
+	CSRFToken string
 }
 
-func RenderTodoFragment(w io.Writer, todo model.Todo) {
-	RenderComponent(w, "todo", "todo", todo)
+func RenderFormFragment(w io.Writer, todo model.Todo, csrfToken string) {
+	RenderComponent(w, "form", "form", TodoComponentData{Todo: todo, CSRFToken: csrfToken})
 }
 
-func RenderError(w io.Writer, message string) {
-	RenderComponent(w, "error-msg", "error-msg", map[string]interface{}{
-		"Message": message,
-	})
+func RenderTodoFragment(w io.Writer, todo model.Todo, csrfToken string) {
+	RenderComponent(w, "todo", "todo", TodoComponentData{Todo: todo, CSRFToken: csrfToken})
 }

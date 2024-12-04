@@ -10,6 +10,7 @@ import (
 	"golang-template-htmx-alpine/apps/todo/todo"
 	"golang-template-htmx-alpine/apps/todo/web"
 	"golang-template-htmx-alpine/lib/buildinfo"
+	"golang-template-htmx-alpine/lib/httpserver"
 	"log/slog"
 	"net"
 	"net/http"
@@ -66,11 +67,14 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
+	csrf, err := httpserver.NewCSRFProtection("http://localhost:" + cfg.Port)
+
 	authService := auth.Init(cfg, queries)
 	todoStore := todo.Init(queries)
 
 	srv := New(
 		cfg,
+		csrf,
 		authService,
 		todoStore,
 	)

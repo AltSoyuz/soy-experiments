@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -53,58 +54,71 @@ type AuthenticatedUser struct {
 
 func (s *testServer) givenNewUser(email, password string) {
 	s.t.Helper()
-	s.sendRequest(
-		http.MethodPost,
-		"/users",
-		"email="+
-			email+
-			"&password="+
-			password+
-			"&confirm-password="+password,
-		false,
+	resp := s.sendRequest(http.MethodGet, "/register",
+		RequestOptions{
+			HTMX: true,
+		},
+	).assertStatus(http.StatusOK)
+
+	resp = s.sendRequest(http.MethodPost, "/users",
+		RequestOptions{
+			Body: "email=" + email +
+				"&password=" + password +
+				"&confirm-password=" + password +
+				"&csrf_token=" + extractCSRFToken(resp.body),
+			HTMX: false,
+		},
 	).assertStatus(http.StatusNoContent).
 		assertRedirect("/login")
 }
 
-func (s *testServer) givenNewAuthenticatedUser() *AuthenticatedUser {
+func (s *testServer) givenNewAuthenticatedUser() AuthenticatedUser {
 	s.t.Helper()
 	email := randomEmail()
 	password := "Str0ngP@ssw0rd!"
 
 	s.givenNewUser(email, password)
-
-	resp := s.sendRequest(
-		http.MethodPost,
-		"/authenticate/password",
-		"email="+email+"&password="+password,
-		false,
-	).assertStatus(http.StatusNoContent).
+	resp := s.sendRequest(http.MethodGet, "/login", RequestOptions{}).assertStatus(http.StatusOK)
+	csrfToken := extractCSRFToken(resp.body)
+	resp = s.sendRequest(http.MethodPost, "/authenticate/password", RequestOptions{
+		Body:      "email=" + email + "&password=" + password,
+		HTMX:      false,
+		CSRFToken: csrfToken,
+	}).assertStatus(http.StatusNoContent).
 		assertRedirect("/")
 
-	s.sendRequest(
-		http.MethodPost,
-		"/email-verification-request",
-		"code="+auth.TestEmailVerificationCode,
-		true,
-		resp.Cookies()...,
-	).assertStatus(http.StatusNoContent).
+	// Test if redirect to verify email
+	resp2 := s.sendRequest(http.MethodGet, "/verify-email", RequestOptions{}).assertStatus(http.StatusOK)
+
+	// Verify email with valid code
+	csrfToken3 := extractCSRFToken(resp2.body)
+	s.sendRequest(http.MethodPost, "/email-verification-request", RequestOptions{
+		Body:      "code=" + auth.TestEmailVerificationCode,
+		HTMX:      true,
+		Cookies:   resp.Cookies(),
+		CSRFToken: csrfToken3,
+	}).assertStatus(http.StatusNoContent).
 		assertRedirect("/login")
 
-	return &AuthenticatedUser{
+	return AuthenticatedUser{
 		Email:   email,
 		Cookies: resp.Cookies(),
 	}
 }
 
-func (s *testServer) givenNewTodo(user *AuthenticatedUser, name, description string) {
+func (s *testServer) givenNewTodo(user AuthenticatedUser, name, description string) {
 	s.t.Helper()
-	s.sendRequest(
-		http.MethodPost,
-		"/todos",
-		"name="+name+"&description="+description,
-		true,
-		user.Cookies...,
-	).assertStatus(http.StatusOK).
+
+	resp := s.sendRequest(http.MethodGet, "/", RequestOptions{
+		Cookies: user.Cookies,
+	}).assertStatus(http.StatusOK)
+
+	s.sendRequest(http.MethodPost, "/todos", RequestOptions{
+		Body:      "name=" + name + "&description=" + description,
+		HTMX:      true,
+		Cookies:   user.Cookies,
+		CSRFToken: extractCSRFToken(resp.body),
+	}).assertStatus(http.StatusOK).
 		assertContains(name)
 }
 
@@ -188,11 +202,19 @@ func setupServer(t *testing.T, config TestConfig) (*testServer, chan error) {
 	return ts, errChan
 }
 
-func (s *testServer) sendRequest(method, path, body string, htmx bool, cookies ...*http.Cookie) *TestResponse {
+type RequestOptions struct {
+	Body      string
+	HTMX      bool
+	Cookies   []*http.Cookie
+	CSRFToken string
+}
+
+func (s *testServer) sendRequest(method, path string, opts RequestOptions) *TestResponse {
 	s.t.Helper()
+
 	var bodyReader io.Reader
-	if body != "" {
-		bodyReader = strings.NewReader(body)
+	if opts.Body != "" {
+		bodyReader = strings.NewReader(opts.Body)
 	}
 
 	req, err := http.NewRequestWithContext(s.ctx, method, s.baseURL+path, bodyReader)
@@ -201,26 +223,30 @@ func (s *testServer) sendRequest(method, path, body string, htmx bool, cookies .
 	}
 
 	req.Header.Set("Origin", s.baseURL)
-	if body != "" {
+	req.Header.Set("X-CSRF-Token", opts.CSRFToken)
+
+	if opts.Body != "" {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
-	if htmx {
+
+	if opts.HTMX {
 		req.Header.Set("HX-Request", "true")
 	}
-	for _, cookie := range cookies {
+
+	for _, cookie := range opts.Cookies {
 		req.AddCookie(cookie)
 	}
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		s.t.Fatalf("failed to send %s request: %v", req.Method, err)
+		s.t.Fatalf("failed to send %s request: %v", method, err)
 	}
+	defer resp.Body.Close()
 
 	bodyBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		s.t.Fatalf("failed to read response body: %v", err)
 	}
-	resp.Body.Close()
 
 	return &TestResponse{
 		Response: resp,
@@ -243,4 +269,26 @@ func randomEmail() string {
 
 	// Create email with timestamp and random string
 	return fmt.Sprintf("test_%d_%s@example.com", time.Now().Unix(), string(b))
+}
+
+func extractCSRFToken(body string) string {
+	// Look for CSRF token in meta tag
+	metaPattern := regexp.MustCompile(`<meta name="csrf-token" content="([^"]+)"`)
+	if matches := metaPattern.FindStringSubmatch(body); len(matches) > 1 {
+		return matches[1]
+	}
+
+	// Look for CSRF token in input field
+	inputPattern := regexp.MustCompile(`<input[^>]+name="csrf_token"[^>]+value="([^"]+)"`)
+	if matches := inputPattern.FindStringSubmatch(body); len(matches) > 1 {
+		return matches[1]
+	}
+
+	// Look for CSRF token in hx-headers attribute
+	hxHeadersPattern := regexp.MustCompile(`hx-headers="\{'X-CSRF-Token': '([^']+)'\}"`)
+	if matches := hxHeadersPattern.FindStringSubmatch(body); len(matches) > 1 {
+		return matches[1]
+	}
+
+	return ""
 }

@@ -6,12 +6,13 @@ import (
 	"golang-template-htmx-alpine/apps/todo/todo"
 	"golang-template-htmx-alpine/apps/todo/web"
 	"golang-template-htmx-alpine/apps/todo/web/forms"
+	"golang-template-htmx-alpine/lib/httpserver"
 	"log/slog"
 	"net/http"
 	"strconv"
 )
 
-func handleRenderTodoList(todoStore *todo.TodoStore) http.HandlerFunc {
+func handleRenderTodoList(todoStore *todo.TodoStore, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, ok := auth.GetSessionUserFrom(ctx)
@@ -26,17 +27,20 @@ func handleRenderTodoList(todoStore *todo.TodoStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
+		csrfToken := csrf.GenerateToken()
+
 		page := web.TodoPageData{
-			Title: "My Todo List",
-			Items: todos,
-			Email: user.Email,
+			Title:     "My Todo List",
+			Items:     todos,
+			Email:     user.Email,
+			CSRFToken: csrfToken,
 		}
 
 		web.RenderTodoList(w, page)
 	}
 }
 
-func handleCreateTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
+func handleCreateTodoFragment(todoStore *todo.TodoStore, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.GetSessionUserFrom(r.Context())
 		if !ok {
@@ -55,11 +59,13 @@ func handleCreateTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		web.RenderTodoFragment(w, todo)
+		csrfToken := csrf.GenerateToken()
+
+		web.RenderTodoFragment(w, todo, csrfToken)
 	}
 }
 
-func handleGetTodoFormFragment(todoStore *todo.TodoStore) http.HandlerFunc {
+func handleGetTodoFormFragment(todoStore *todo.TodoStore, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		user, ok := auth.GetSessionUserFrom(ctx)
@@ -75,7 +81,6 @@ func handleGetTodoFormFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 			http.Error(w, "Invalid ID", http.StatusBadRequest)
 			return
 		}
-		slog.Debug("fetching todo", "id", id, "userId", user.Id)
 
 		todo, err := todoStore.FindById(ctx, id, user.Id)
 		if err != nil {
@@ -84,11 +89,12 @@ func handleGetTodoFormFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 			return
 		}
 
-		web.RenderFormFragment(w, todo)
+		csrfToken := csrf.GenerateToken()
+		web.RenderFormFragment(w, todo, csrfToken)
 	}
 }
 
-func handleUpdateTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
+func handleUpdateTodoFragment(todoStore *todo.TodoStore, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.GetSessionUserFrom(r.Context())
 		if !ok {
@@ -122,7 +128,8 @@ func handleUpdateTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		web.RenderTodoFragment(w, todo)
+		csrfToken := csrf.GenerateToken()
+		web.RenderTodoFragment(w, todo, csrfToken)
 	}
 }
 
@@ -150,7 +157,7 @@ func handleDeleteTodo(todoStore *todo.TodoStore) http.HandlerFunc {
 	}
 }
 
-func handleCompleteTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
+func handleCompleteTodoFragment(todoStore *todo.TodoStore, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user, ok := auth.GetSessionUserFrom(r.Context())
 		if !ok {
@@ -179,6 +186,7 @@ func handleCompleteTodoFragment(todoStore *todo.TodoStore) http.HandlerFunc {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		web.RenderTodoFragment(w, todo)
+		csrfToken := csrf.GenerateToken()
+		web.RenderTodoFragment(w, todo, csrfToken)
 	}
 }

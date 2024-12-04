@@ -1,9 +1,10 @@
 {{ define "form" }}
-<form hx-put="/todos/{{ .Id }}">
+<form hx-put="/todos/{{ .Todo.Id }}">
+    <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
     <label for="name">Name</label>
-    <input type="text" id="title" name="name" value="{{ .Name }}">
+    <input type="text" id="title" name="name" value="{{ .Todo.Name }}">
     <label for="description">Description</label>
-    <input type="text" id="description" name="description" value="{{ .Description }}">
+    <input type="text" id="description" name="description" value="{{ .Todo.Description }}">
     <button type="submit">Save Modification</button>
 </form>
 {{ end }}

@@ -1,6 +1,7 @@
 {{ define "main" }}
 <h1>{{ .Title }}</h1>
 <form hx-post="/authenticate/password" hx-target="#error-msg" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
     <div>
         <label for="email">Email</label>
         <input type="email" id="email" name="email" required>
@@ -12,7 +13,7 @@
     <div>
         <button type="submit">Login</button>
     </div>
+    <div id="error-msg" style="color: red;">{{ upperFirst .Error }}</div>
 </form>
-<div id="error-msg"></div>
 <button onclick="window.location.href='/register'">Sign up -></button>
 {{ end }}

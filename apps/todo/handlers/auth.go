@@ -4,6 +4,7 @@ import (
 	"golang-template-htmx-alpine/apps/todo/auth"
 	"golang-template-htmx-alpine/apps/todo/web"
 	"golang-template-htmx-alpine/apps/todo/web/forms"
+	"golang-template-htmx-alpine/lib/httpserver"
 	"log/slog"
 	"net/http"
 )
@@ -12,7 +13,7 @@ func handleLogout(as *auth.Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		s, err := as.GetSessionFrom(r)
 		if err != nil {
-			slog.Warn("no session found")
+			slog.Error("error getting session", "error", err)
 			w.Header().Set("HX-Redirect", "/login")
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -31,20 +32,22 @@ func handleLogout(as *auth.Service) http.HandlerFunc {
 	}
 }
 
-func handleAuthWithPassword(authService *auth.Service) http.HandlerFunc {
+func handleAuthWithPassword(authService *auth.Service, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		form, err := forms.LoginFrom(r)
 		if err != nil {
 			slog.Error("error getting login form", "error", err)
-			web.RenderError(w, "error getting login form")
+			csrftoken := csrf.GenerateToken()
+			web.RenderLogin(w, csrftoken, err.Error())
 			return
 		}
 
 		session, token, err := authService.AuthenticateWithPassword(ctx, form.Email, form.Password)
 		if err != nil {
 			slog.Error("error authenticating with password", "error", err)
-			web.RenderError(w, "error authenticating with password")
+			csrftoken := csrf.GenerateToken()
+			web.RenderLogin(w, csrftoken, "Invalid email or password")
 			return
 		}
 
@@ -55,25 +58,28 @@ func handleAuthWithPassword(authService *auth.Service) http.HandlerFunc {
 	}
 }
 
-func handleRenderRegisterView() http.HandlerFunc {
+func handleRenderRegisterView(csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		web.RenderRegister(w)
+		csrfToken := csrf.GenerateToken()
+		web.RenderRegister(w, csrfToken, "")
 	}
 }
 
-func handleRenderLoginView() http.HandlerFunc {
+func handleRenderLoginView(csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		web.RenderLogin(w)
+		csrfToken := csrf.GenerateToken()
+		web.RenderLogin(w, csrfToken, "")
 	}
 }
 
-func handleRenderVerifyEmail() http.HandlerFunc {
+func handleRenderVerifyEmail(csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		web.RenderVerifyEmail(w)
+		csrfToken := csrf.GenerateToken()
+		web.RenderVerifyEmail(w, csrfToken, "")
 	}
 }
 
-func handleEmailVerification(as *auth.Service) http.HandlerFunc {
+func handleEmailVerification(as *auth.Service, csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		token := auth.GetTokenFromCookie(r)
@@ -81,14 +87,16 @@ func handleEmailVerification(as *auth.Service) http.HandlerFunc {
 		form, err := forms.CodeFrom(r)
 		if err != nil {
 			slog.Error("error getting verification form", "error", err)
-			web.RenderError(w, "error getting verification form")
+			csrfToken := csrf.GenerateToken()
+			web.RenderVerifyEmail(w, csrfToken, err.Error())
 			return
 		}
 
 		err = as.VerifyEmail(ctx, token, form.Code)
 		if err != nil {
 			slog.Error("error verifying email", "error", err)
-			web.RenderError(w, err.Error())
+			csrfToken := csrf.GenerateToken()
+			web.RenderVerifyEmail(w, csrfToken, err.Error())
 			return
 		}
 
