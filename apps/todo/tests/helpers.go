@@ -26,7 +26,7 @@ type TestConfig struct {
 
 var defaultTestConfig = TestConfig{
 	BaseURL:    "http://localhost:",
-	Port:       8080,
+	Port:       8081,
 	RateLimit:  5,
 	MaxRetries: 10,
 	Timeout:    2 * time.Minute,
@@ -60,7 +60,7 @@ func (s *testServer) givenNewUser(email, password string) {
 		},
 	).assertStatus(http.StatusOK)
 
-	resp = s.sendRequest(http.MethodPost, "/users",
+	s.sendRequest(http.MethodPost, "/users",
 		RequestOptions{
 			Body: "email=" + email +
 				"&password=" + password +
@@ -283,9 +283,8 @@ func extractCSRFToken(body string) string {
 	if matches := inputPattern.FindStringSubmatch(body); len(matches) > 1 {
 		return matches[1]
 	}
-
 	// Look for CSRF token in hx-headers attribute
-	hxHeadersPattern := regexp.MustCompile(`hx-headers="\{'X-CSRF-Token': '([^']+)'\}"`)
+	hxHeadersPattern := regexp.MustCompile(`hx-headers='{"X-CSRF-Token": "([^"]+)"}`)
 	if matches := hxHeadersPattern.FindStringSubmatch(body); len(matches) > 1 {
 		return matches[1]
 	}

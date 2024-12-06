@@ -15,7 +15,7 @@ func handleCreateUser(authService *auth.Service, csrf *httpserver.CSRFProtection
 		form, err := forms.RegisterFrom(r)
 		if err != nil {
 			csrfToken := csrf.GenerateToken()
-			web.RenderRegister(w, csrfToken, err.Error())
+			web.RenderRegisterForm(w, csrfToken, err.Error())
 			return
 		}
 
@@ -24,7 +24,7 @@ func handleCreateUser(authService *auth.Service, csrf *httpserver.CSRFProtection
 		if err != nil {
 			slog.Error("error registering user", "error", err)
 			csrfToken := csrf.GenerateToken()
-			web.RenderRegister(w, csrfToken, err.Error())
+			web.RenderRegisterForm(w, csrfToken, err.Error())
 			return
 		}
 

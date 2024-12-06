@@ -53,7 +53,7 @@ func AddRoutes(
 
 func notFoundView() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		web.RenderNotFound(w)
+		web.RenderNotFoundPage(w)
 	}
 }
 

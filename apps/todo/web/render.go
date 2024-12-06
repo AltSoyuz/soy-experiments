@@ -11,23 +11,40 @@ type pageData struct {
 	Error     string
 }
 
-func RenderNotFound(w io.Writer) {
+func RenderNotFoundPage(w io.Writer) {
 	RenderPage(w, "404", nil)
 }
 
-func RenderRegister(w io.Writer, csrfToken, error string) {
-	RenderPage(w, "register", pageData{Title: "Register", CSRFToken: csrfToken, Error: error})
+func RenderRegisterPage(w io.Writer, csrfToken string) {
+	RenderPage(w, "register", pageData{Title: "Register", CSRFToken: csrfToken})
 }
 
-func RenderLogin(w io.Writer, csrfToken, error string) {
-	RenderPage(w, "login", pageData{Title: "Login", CSRFToken: csrfToken, Error: error})
+func RenderLoginPage(w io.Writer, csrfToken string) {
+	RenderPage(w, "login", pageData{Title: "Login", CSRFToken: csrfToken})
 }
 
-func RenderVerifyEmail(w io.Writer, csrfToken, error string) {
+type FormData struct {
+	CSRFToken string
+	Error     string
+}
+
+func RenderLoginForm(w io.Writer, csrfToken, error string) {
+	RenderComponent(w, "login-form", "login-form", FormData{CSRFToken: csrfToken, Error: error})
+}
+
+func RenderRegisterForm(w io.Writer, csrfToken, error string) {
+	RenderComponent(w, "register-form", "register-form", FormData{CSRFToken: csrfToken, Error: error})
+}
+
+func RenderVerifyEmailForm(w io.Writer, csrfToken, error string) {
+	RenderComponent(w, "verify-email-form", "verify-email-form", FormData{CSRFToken: csrfToken, Error: error})
+}
+
+func RenderVerifyEmail(w io.Writer, csrfToken string) {
 	RenderPage(
 		w,
 		"verify-email",
-		pageData{Title: "Verify Email", CSRFToken: csrfToken, Error: error},
+		pageData{Title: "Verify Email", CSRFToken: csrfToken},
 	)
 }
 
@@ -41,7 +58,7 @@ func Render404(w io.Writer) {
 
 type TodoPageData struct {
 	Title     string
-	Items     []model.Todo
+	Items     []TodoComponentData
 	Email     string
 	CSRFToken string
 }
@@ -56,7 +73,7 @@ type TodoComponentData struct {
 }
 
 func RenderFormFragment(w io.Writer, todo model.Todo, csrfToken string) {
-	RenderComponent(w, "form", "form", TodoComponentData{Todo: todo, CSRFToken: csrfToken})
+	RenderComponent(w, "todo-form", "todo-form", TodoComponentData{Todo: todo, CSRFToken: csrfToken})
 }
 
 func RenderTodoFragment(w io.Writer, todo model.Todo, csrfToken string) {

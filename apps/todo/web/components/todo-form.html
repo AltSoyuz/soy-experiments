@@ -1,4 +1,4 @@
-{{ define "form" }}
+{{ define "todo-form" }}
 <form hx-put="/todos/{{ .Todo.Id }}">
     <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
     <label for="name">Name</label>

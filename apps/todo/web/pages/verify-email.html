@@ -1,14 +1,4 @@
 {{ define "main"}}
 <h1>{{ .Title }}</h1>
-<form hx-post="/email-verification-request" hx-target="#error-msg" hx-swap="outerHTML">
-    <input type="hidden" name="csrf_token" value="{{ .CSRFToken }}">
-    <div>
-        <label for="code">Code</label>
-        <input type="code" id="code" name="code" required>
-    </div>
-    <div>
-        <button type="submit">Verify Email</button>
-    </div>
-    <div id="error-msg" style="color: red;">{{ upperFirst .Error }}</div>
-</form>
+{{ template "verify-email-form" . }}
 {{ end }}

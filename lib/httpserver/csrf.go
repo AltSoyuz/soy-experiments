@@ -63,7 +63,12 @@ func (cs *CSRFProtection) isOriginAllowed(origin string) bool {
 // Generate a new CSRF token
 func (cs *CSRFProtection) GenerateToken() string {
 	b := make([]byte, 32)
-	rand.Read(b)
+	_, err := rand.Read(b)
+
+	if err != nil {
+		return ""
+	}
+
 	token := base64.URLEncoding.EncodeToString(b)
 
 	cs.mutex.Lock()

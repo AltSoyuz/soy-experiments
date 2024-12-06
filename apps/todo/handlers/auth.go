@@ -39,7 +39,7 @@ func handleAuthWithPassword(authService *auth.Service, csrf *httpserver.CSRFProt
 		if err != nil {
 			slog.Error("error getting login form", "error", err)
 			csrftoken := csrf.GenerateToken()
-			web.RenderLogin(w, csrftoken, err.Error())
+			web.RenderLoginForm(w, csrftoken, err.Error())
 			return
 		}
 
@@ -47,7 +47,7 @@ func handleAuthWithPassword(authService *auth.Service, csrf *httpserver.CSRFProt
 		if err != nil {
 			slog.Error("error authenticating with password", "error", err)
 			csrftoken := csrf.GenerateToken()
-			web.RenderLogin(w, csrftoken, "Invalid email or password")
+			web.RenderLoginForm(w, csrftoken, err.Error())
 			return
 		}
 
@@ -61,21 +61,21 @@ func handleAuthWithPassword(authService *auth.Service, csrf *httpserver.CSRFProt
 func handleRenderRegisterView(csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		csrfToken := csrf.GenerateToken()
-		web.RenderRegister(w, csrfToken, "")
+		web.RenderRegisterPage(w, csrfToken)
 	}
 }
 
 func handleRenderLoginView(csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		csrfToken := csrf.GenerateToken()
-		web.RenderLogin(w, csrfToken, "")
+		web.RenderLoginPage(w, csrfToken)
 	}
 }
 
 func handleRenderVerifyEmail(csrf *httpserver.CSRFProtection) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		csrfToken := csrf.GenerateToken()
-		web.RenderVerifyEmail(w, csrfToken, "")
+		web.RenderVerifyEmail(w, csrfToken)
 	}
 }
 
@@ -88,7 +88,7 @@ func handleEmailVerification(as *auth.Service, csrf *httpserver.CSRFProtection) 
 		if err != nil {
 			slog.Error("error getting verification form", "error", err)
 			csrfToken := csrf.GenerateToken()
-			web.RenderVerifyEmail(w, csrfToken, err.Error())
+			web.RenderVerifyEmailForm(w, csrfToken, err.Error())
 			return
 		}
 
@@ -96,7 +96,7 @@ func handleEmailVerification(as *auth.Service, csrf *httpserver.CSRFProtection) 
 		if err != nil {
 			slog.Error("error verifying email", "error", err)
 			csrfToken := csrf.GenerateToken()
-			web.RenderVerifyEmail(w, csrfToken, err.Error())
+			web.RenderVerifyEmailForm(w, csrfToken, err.Error())
 			return
 		}
 

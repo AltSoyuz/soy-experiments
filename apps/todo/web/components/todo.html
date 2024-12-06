@@ -6,11 +6,11 @@
     <span>{{ .Todo.Name }} - {{ .Todo.Description }}</span>
     {{ end }}
     <button hx-get="todos/{{ .Todo.Id }}/form" hx-target="closest li" hx-swap="outerHTML">Edit</button>
-    <button hx-delete="todos/{{ .Todo.Id }}" hx-target="closest li" hx-swap="delete">
+    <button hx-delete="todos/{{ .Todo.Id }}" hx-target="closest li" hx-swap="delete"
+        hx-headers='{"X-CSRF-Token": "{{ .CSRFToken }}"}'>
         Delete
     </button>
-    <input type="checkbox" hx-put="todos/{{ .Todo.Id }}/complete" hx-target="closest li" hx-swap="outerHTML" 
-        {{ if .Todo.IsComplete }}checked{{ end }} 
-        hx-headers="{'X-CSRF-Token': '{{ .CSRFToken }}'}">
+    <input type="checkbox" hx-put="todos/{{ .Todo.Id }}/complete" hx-target="closest li" hx-swap="outerHTML" {{ if
+        .Todo.IsComplete }}checked{{ end }} hx-headers='{"X-CSRF-Token": "{{ .CSRFToken }}"}'>
 </li>
 {{ end }}

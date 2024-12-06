@@ -67,7 +67,11 @@ func Run(ctx context.Context) error {
 		return err
 	}
 
+	// Initialize the CSRF protection
 	csrf, err := httpserver.NewCSRFProtection("http://localhost:" + cfg.Port)
+	if err != nil {
+		return err
+	}
 
 	authService := auth.Init(cfg, queries)
 	todoStore := todo.Init(queries)

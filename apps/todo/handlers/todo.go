@@ -27,13 +27,20 @@ func handleRenderTodoList(todoStore *todo.TodoStore, csrf *httpserver.CSRFProtec
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		csrfToken := csrf.GenerateToken()
+		var todoViewModels []web.TodoComponentData
+
+		for _, todo := range todos {
+			todoViewModels = append(todoViewModels, web.TodoComponentData{
+				Todo:      todo,
+				CSRFToken: csrf.GenerateToken(),
+			})
+		}
 
 		page := web.TodoPageData{
 			Title:     "My Todo List",
-			Items:     todos,
+			Items:     todoViewModels,
 			Email:     user.Email,
-			CSRFToken: csrfToken,
+			CSRFToken: csrf.GenerateToken(),
 		}
 
 		web.RenderTodoList(w, page)
