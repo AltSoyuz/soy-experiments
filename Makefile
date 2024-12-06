@@ -14,8 +14,8 @@ TAR_OWNERSHIP ?= --owner=1000 --group=1000
 
 TAR_OWNERSHIP ?= --owner=1000 --group=1000
 
-GITHUB_RELEASE_SPEC_FILE="/tmp/maun-github-release"
-GITHUB_DEBUG_FILE="/tmp/maun-github-debug"
+GITHUB_RELEASE_SPEC_FILE="/tmp/se-github-release"
+GITHUB_DEBUG_FILE="/tmp/se-github-debug"
 
 include apps/*/Makefile
 include deployment/Makefile
@@ -95,8 +95,9 @@ sqlc: install-sqlc
 remove-sqlc:
 	rm -rf `which sqlc`
 
-release:
-	$(MAKE_PARRALLEL) release-todo
+release: 
+	$(MAKE_PARALLEL) \
+		release-todo
 
 release-todo: \
 	release-todo-linux-amd64 \
@@ -108,7 +109,7 @@ release-todo-linux-amd64:
 release-todo-linux-arm64:
 	GOOS=linux GOARCH=arm64 $(MAKE) release-todo-goos-goarch
 
-release-todo: todo-$(GOOS)-$(GOARCH)-prod
+release-todo-goos-goarch: todo-$(GOOS)-$(GOARCH)-prod
 	cd bin && \
 		tar $(TAR_OWNERSHIP) --transform="flags=r;s|-$(GOOS)-$(GOARCH)||" -czf todo-$(GOOS)-$(GOARCH)-$(PKG_TAG).tar.gz \
 			todo-$(GOOS)-$(GOARCH)-prod \
@@ -132,7 +133,7 @@ github-create-release: github-token-check github-tag-check
 		-X POST \
 		-H "Accept: application/vnd.github+json" \
 		-H "Authorization: token $(GITHUB_TOKEN)" \
-		https://api.github.com/AltSoyuz/soy-experiments/releases \
+		https://api.github.com/repos/AltSoyuz/soy-experiments/releases \
 		-d '{"tag_name":"$(TAG)","name":"$(TAG)","body":"TODO: put here the changelog for $(TAG) release from docs/CHANGELOG.md","draft":true,"prerelease":false,"generate_release_notes":false}'); \
 		if [ $${result} = 201 ]; then \
 			release_id=$$(cat $(GITHUB_RELEASE_SPEC_FILE) | grep '"id"' -m 1 | sed -E 's/.* ([[:digit:]]+)\,/\1/'); \
