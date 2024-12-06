@@ -3,10 +3,11 @@ package todo
 import (
 	"context"
 	"database/sql"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
-	"golang-template-htmx-alpine/apps/todo/model"
-	"golang-template-htmx-alpine/apps/todo/web/forms"
 	"log/slog"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/model"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/web/forms"
 )
 
 type TodoStore struct {

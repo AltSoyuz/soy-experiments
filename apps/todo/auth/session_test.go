@@ -2,12 +2,13 @@ package auth
 
 import (
 	"context"
-	"golang-template-htmx-alpine/apps/todo/model"
-	"golang-template-htmx-alpine/apps/todo/store"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/model"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/store"
 )
 
 func TestHashToken(t *testing.T) {

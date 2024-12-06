@@ -2,13 +2,14 @@ package todo_test
 
 import (
 	"context"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
-	"golang-template-htmx-alpine/apps/todo/store"
-	"golang-template-htmx-alpine/apps/todo/todo"
-	"golang-template-htmx-alpine/apps/todo/web/forms"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/store"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/todo"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/web/forms"
 )
 
 func TestCreateFromForm(t *testing.T) {

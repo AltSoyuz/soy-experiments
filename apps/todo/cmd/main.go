@@ -3,8 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/server"
 	"os"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/server"
 )
 
 func main() {

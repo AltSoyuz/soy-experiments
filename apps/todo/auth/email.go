@@ -5,12 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"log/slog"
 	"net/smtp"
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
 )
 
 type EmailParams struct {

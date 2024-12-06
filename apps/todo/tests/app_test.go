@@ -3,9 +3,10 @@ package tests
 import (
 	"context"
 	"errors"
-	"golang-template-htmx-alpine/apps/todo/auth"
 	"net/http"
 	"testing"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/auth"
 )
 
 func TestRegistrationRateLimit(t *testing.T) {

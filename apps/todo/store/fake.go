@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"errors"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"log/slog"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
 )
 
 type FakeQuerier struct {

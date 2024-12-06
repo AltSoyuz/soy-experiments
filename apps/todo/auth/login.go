@@ -3,8 +3,9 @@ package auth
 import (
 	"context"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/model"
-	"golang-template-htmx-alpine/lib/argon2id"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/model"
+	"github.com/AltSoyuz/soy-experiments/lib/argon2id"
 )
 
 func (as *Service) AuthenticateWithPassword(ctx context.Context, email, password string) (s model.Session, t string, err error) {

@@ -3,8 +3,9 @@ package auth
 import (
 	"context"
 	"errors"
-	"golang-template-htmx-alpine/apps/todo/store"
 	"testing"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/store"
 )
 
 func TestCreateUser(t *testing.T) {

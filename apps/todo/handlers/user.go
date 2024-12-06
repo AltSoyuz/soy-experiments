@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/web"
-	"golang-template-htmx-alpine/apps/todo/web/forms"
-	"golang-template-htmx-alpine/lib/httpserver"
 	"log/slog"
 	"net/http"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/auth"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/web"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/web/forms"
+	"github.com/AltSoyuz/soy-experiments/lib/httpserver"
 )
 
 // handleCreateUser creates a new user account and redirects to the login page.

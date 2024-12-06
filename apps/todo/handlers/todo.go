@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/model"
-	"golang-template-htmx-alpine/apps/todo/todo"
-	"golang-template-htmx-alpine/apps/todo/web"
-	"golang-template-htmx-alpine/apps/todo/web/forms"
-	"golang-template-htmx-alpine/lib/httpserver"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/auth"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/model"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/todo"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/web"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/web/forms"
+	"github.com/AltSoyuz/soy-experiments/lib/httpserver"
 )
 
 func handleRenderTodoList(todoStore *todo.TodoStore, csrf *httpserver.CSRFProtection) http.HandlerFunc {

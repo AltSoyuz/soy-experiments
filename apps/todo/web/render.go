@@ -1,8 +1,9 @@
 package web
 
 import (
-	"golang-template-htmx-alpine/apps/todo/model"
 	"io"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/model"
 )
 
 type pageData struct {

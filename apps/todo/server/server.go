@@ -1,12 +1,13 @@
 package server
 
 import (
-	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/config"
-	"golang-template-htmx-alpine/apps/todo/handlers"
-	"golang-template-htmx-alpine/apps/todo/todo"
-	"golang-template-htmx-alpine/lib/httpserver"
 	"net/http"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/auth"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/config"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/handlers"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/todo"
+	"github.com/AltSoyuz/soy-experiments/lib/httpserver"
 )
 
 func New(

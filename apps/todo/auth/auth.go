@@ -3,11 +3,12 @@ package auth
 import (
 	"context"
 	"errors"
-	"golang-template-htmx-alpine/apps/todo/config"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
-	"golang-template-htmx-alpine/lib/ratelimit"
 	"net/http"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/config"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
+	"github.com/AltSoyuz/soy-experiments/lib/ratelimit"
 )
 
 var (

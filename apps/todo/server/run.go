@@ -4,13 +4,6 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/config"
-	"golang-template-htmx-alpine/apps/todo/store"
-	"golang-template-htmx-alpine/apps/todo/todo"
-	"golang-template-htmx-alpine/apps/todo/web"
-	"golang-template-htmx-alpine/lib/buildinfo"
-	"golang-template-htmx-alpine/lib/httpserver"
 	"log/slog"
 	"net"
 	"net/http"
@@ -19,6 +12,14 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/auth"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/config"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/store"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/todo"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/web"
+	"github.com/AltSoyuz/soy-experiments/lib/buildinfo"
+	"github.com/AltSoyuz/soy-experiments/lib/httpserver"
 )
 
 var (

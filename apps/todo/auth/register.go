@@ -3,8 +3,9 @@ package auth
 import (
 	"context"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
-	"golang-template-htmx-alpine/lib/argon2id"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
+	"github.com/AltSoyuz/soy-experiments/lib/argon2id"
 )
 
 // RegisterUser creates a new user with the given email and password

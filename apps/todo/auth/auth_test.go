@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"golang-template-htmx-alpine/apps/todo/config"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/config"
 )
 
 func givenTestConfig() *config.Config {

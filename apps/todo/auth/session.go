@@ -8,11 +8,12 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
-	"golang-template-htmx-alpine/apps/todo/model"
 	"log/slog"
 	"net/http"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/model"
 )
 
 // generateTokenSession creates a cryptographically secure session token

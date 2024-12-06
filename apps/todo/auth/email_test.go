@@ -3,10 +3,11 @@ package auth
 import (
 	"context"
 	"errors"
-	"golang-template-htmx-alpine/apps/todo/config"
-	"golang-template-htmx-alpine/apps/todo/store"
 	"testing"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/config"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/store"
 )
 
 func TestCreateAndSendVerificationEmail(t *testing.T) {

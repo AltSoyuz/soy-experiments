@@ -4,12 +4,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/config"
-	"golang-template-htmx-alpine/apps/todo/gen/db"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/config"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/gen/db"
 
 	_ "github.com/mattn/go-sqlite3"
 )

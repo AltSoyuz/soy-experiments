@@ -3,9 +3,6 @@ package tests
 import (
 	"context"
 	"fmt"
-	"golang-template-htmx-alpine/apps/todo/auth"
-	"golang-template-htmx-alpine/apps/todo/server"
-	"golang-template-htmx-alpine/lib/httpserver"
 	"io"
 	"net/http"
 	"os"
@@ -13,6 +10,10 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/AltSoyuz/soy-experiments/apps/todo/auth"
+	"github.com/AltSoyuz/soy-experiments/apps/todo/server"
+	"github.com/AltSoyuz/soy-experiments/lib/httpserver"
 )
 
 // TestConfig holds test configuration parameters
